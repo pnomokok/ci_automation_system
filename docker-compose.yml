@@ -1,0 +1,69 @@
+services:
+
+  # ── Altyapı ────────────────────────────────────────────────────────────────
+
+  postgres:
+    image: postgres:16-alpine
+    environment:
+      POSTGRES_USER: ci_user
+      POSTGRES_PASSWORD: ci_pass
+      POSTGRES_DB: ci_db
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ci_user -d ci_db"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+
+  redis:
+    image: redis:7-alpine
+    ports:
+      - "6379:6379"
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 3s
+      retries: 5
+
+  # ── Kişi 1 · Irmak — CI Orchestrator ──────────────────────────────────────
+
+  orchestrator:
+    build: ./orchestrator
+    ports:
+      - "8000:8000"
+    environment:
+      DATABASE_URL: postgresql+asyncpg://ci_user:ci_pass@postgres:5432/ci_db
+      REDIS_URL: redis://redis:6379/0
+      JWT_SECRET_KEY: ${JWT_SECRET_KEY}
+      JWT_EXPIRE_MINUTES: 60
+      MAX_CONCURRENT_PIPELINES: 3
+      PIPELINE_TIMEOUT_SEC: 600
+    volumes:
+      - workspaces:/shared/workspaces
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+
+  # ── Kişi 2 · Aleyna — Runner ───────────────────────────────────────────────
+  # runner:
+  #   build: ./runner
+  #   (Aleyna tarafından eklenecek)
+
+  # ── Kişi 3 · Zeynep Sude — Repository Manager ─────────────────────────────
+  # repo-manager:
+  #   build: ./repo-manager
+  #   (Zeynep Sude tarafından eklenecek)
+
+  # ── Kişi 4 · Rabia — Web Dashboard ────────────────────────────────────────
+  # dashboard:
+  #   build: ./dashboard
+  #   (Rabia tarafından eklenecek)
+
+volumes:
+  postgres_data:
+  workspaces:
