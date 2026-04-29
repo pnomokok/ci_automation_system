@@ -33,7 +33,7 @@ class ContainerManager:
                 image=image,
                 command=command,
                 volumes=volumes,
-                network_mode="none",
+                network_mode="bridge",
                 detach=True,
                 tty=False,
                 auto_remove=False,

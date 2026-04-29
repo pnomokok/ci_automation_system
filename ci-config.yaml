@@ -3,16 +3,20 @@ image: python:3.11-slim
 
 steps:
   install:
-    command: echo "No dependencies to install"
-    timeout: 60
+    command: python -m venv /workspace/.venv && /workspace/.venv/bin/pip install -q -r /workspace/orchestrator/requirements.txt
+    timeout: 180
   build:
     command: echo "No build step"
     timeout: 60
   test:
-    command: echo "1 passed in 0.1s"
-    timeout: 60
+    command: cd /workspace/orchestrator && /workspace/.venv/bin/pytest tests/ -v --tb=short
+    timeout: 120
 
 branches:
   - main
   - develop
   - feature/integration-1-2
+  - feature/repo-manager
+  - feature/runner-initial
+  - feature/web-dashboard
+  - feature/orchestrator-initial
