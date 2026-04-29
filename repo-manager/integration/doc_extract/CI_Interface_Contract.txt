@@ -1,0 +1,504 @@
+FILE: CI_Interface_Contract.pdf
+PAGES: 14
+
+===== PAGE 1 =====
+  CI OTOMASYON SISTEMI 
+ 
+Interface Contract 
+Moduller Arasi Arayuz Sozlesmesi  v1.0 
+CENG314  |  4 Kisilik Gelistirici Ekibi  |  Nisan 2026 
+ 
+Giris ve Amac 
+Bu belge, CI Otomasyon Sistemi'nin dort modulu arasindaki TUM arayuzleri kesinlestirir. Her gelistirici 
+kendi modulunu yazarken bu belgede tanimlanan formatlara, endpoint adlarina ve JSON yapilarına 
+aynen uyar. 
+ 
+Temel Kural 
+Bu belgede bir sey degisirse degistiren kisi once ekibi bilgilendirir, belgeyi gunceller ve sonra kodunu 
+degistirir. Hicbir zaman tam tersi olmaz. Aksi halde baskasinin kodu sessizce kirilir.  
+ 
+Moduller ve Sahipleri 
+Modul Sahip Saglayan Arayuz Tuketenler 
+CI Orchestrator Kisi 1 - Irmak REST API (pipeline, log, repo 
+endpoint'leri) 
+Dashboard, Runner, 
+Repo Manager 
+Runner Kisi 2 - Aleyna Orchestrator'a adim sonucu POST'u CI Orchestrator 
+Repository Manager Kisi 3 – Zeynep 
+Sude 
+Orchestrator'a pipeline tetikleme 
+POST'u  +  /webhook  +  /trigger 
+CI Orchestrator, GitHub 
+Web Dashboard Kisi 4 - Rabia Kullanici arayuzu (tuketici, 
+saglamaz) 
+CI Orchestrator REST 
+API 
+ 
+  
+
+===== PAGE 2 =====
+1. CI Orchestrator  —  REST API Sahip: Kisi 1  (Irmak) 
+ 
+Tum endpoint'ler /api/v1 on-eki ile baslar. Base URL: http://localhost:8000 
+ 
+Authentication 
+Tum endpoint'ler (webhook haric) JWT Bearer token gerektirir. Header: Authorization: Bearer 
+<token> Token /api/v1/auth/login endpoint'inden alinir. 
+ 
+1.1  Auth Endpoint'leri 
+Metot Endpoint Aciklama 
+POST /api/v1/auth/login Kullanici adi + sifre ile JWT token al 
+POST /api/v1/auth/refresh Suresi dolan token'i yenile 
+ 
+POST /api/v1/auth/login 
+Istek govdesi: 
+{ 
+  "username": "string", 
+  "password": "string" 
+} 
+ 
+Yanit (200 OK): 
+{ 
+  "access_token": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...", 
+  "token_type":   "bearer", 
+  "expires_in":   3600 
+} 
+ 
+1.2  Pipeline Endpoint'leri 
+Metot Endpoint Aciklama 
+GET /api/v1/pipelines Tum pipeline'lari listele (sayfalama destekli) 
+POST /api/v1/pipelines Manuel pipeline baslat 
+GET /api/v1/pipelines/{id} Tek pipeline detayi 
+POST /api/v1/pipelines/{id}/stop Pipeline'i durdur 
+GET /api/v1/pipelines/{id}/logs Pipeline'in adim loglarini getir 
+GET /api/v1/pipelines/{id}/report Pipeline test ozet raporu 
+
+===== PAGE 3 =====
+ 
+GET /api/v1/pipelines 
+Query parametreleri (hepsi opsiyonel): 
+Parametre Tip Varsayilan Aciklama 
+page integer 1 Sayfa numarasi 
+page_size integer 20 Sayfa basi kayit sayisi (maks 100) 
+status string - QUEUED | RUNNING | SUCCESS | FAILED | STOPPED 
+repo_id uuid - Belirli bir repoya ait pipeline'lar 
+ 
+Yanit (200 OK): 
+{ 
+  "items": [ 
+    { 
+      "id":           "uuid", 
+      "repo_id":      "uuid", 
+      "repo_url":     "https://github.com/org/repo", 
+      "branch":       "main", 
+      "commit_hash":  "a1b2c3d4", 
+      "trigger_type": "webhook | manual", 
+      "status":       "QUEUED | RUNNING | SUCCESS | FAILED | STOPPED", 
+      "started_at":   "2026-04-26T10:00:00Z",   // null ise henuz baslamadi 
+      "finished_at":  "2026-04-26T10:05:00Z",   // null ise bitmedi 
+      "duration_sec": 300                        // null ise bitmedi 
+    } 
+  ], 
+  "total":     42, 
+  "page":       1, 
+  "page_size": 20 
+} 
+ 
+POST /api/v1/pipelines  (manuel tetikleme) 
+Istek govdesi: 
+{ 
+  "repo_url": "https://github.com/org/repo",   // zorunlu 
+  "branch":   "main"                           // zorunlu 
+} 
+ 
+Yanit (201 Created): 
+{ 
+  "id":           "uuid", 
+  "status":       "QUEUED", 
+  "trigger_type": "manual", 
+  "branch":       "main", 
+  "created_at":   "2026-04-26T10:00:00Z" 
+
+===== PAGE 4 =====
+} 
+ 
+GET /api/v1/pipelines/{id} 
+Yanit (200 OK): 
+{ 
+  "id":           "uuid", 
+  "repo_id":      "uuid", 
+  "repo_url":     "https://github.com/org/repo", 
+  "branch":       "main", 
+  "commit_hash":  "a1b2c3d4e5f6", 
+  "commit_msg":   "fix: null pointer in parser", 
+  "commit_author":"Ali Veli", 
+  "trigger_type": "webhook", 
+  "status":       "SUCCESS", 
+  "started_at":   "2026-04-26T10:00:00Z", 
+  "finished_at":  "2026-04-26T10:05:00Z", 
+  "duration_sec": 300, 
+  "steps": [ 
+    { 
+      "id":          "uuid", 
+      "name":        "install | build | test", 
+      "order":        1, 
+      "status":      "SUCCESS | FAILED | RUNNING | PENDING", 
+      "started_at":  "2026-04-26T10:00:05Z", 
+      "finished_at": "2026-04-26T10:01:00Z", 
+      "duration_sec": 55, 
+      "exit_code":    0 
+    } 
+  ] 
+} 
+ 
+GET /api/v1/pipelines/{id}/logs 
+Query parametreleri: 
+Parametre Tip Varsayilan Aciklama 
+step_name string - install | build | test  (filtrelemek icin) 
+page integer 1 Sayfa numarasi 
+page_size integer 100 Sayfa basi satir sayisi (maks 500) 
+stream string - stdout | stderr  (filtrelemek icin) 
+ 
+Yanit (200 OK): 
+{ 
+  "pipeline_id": "uuid", 
+  "items": [ 
+    { 
+      "step_id":     "uuid", 
+
+===== PAGE 5 =====
+      "step_name":   "install", 
+      "line_number":  1, 
+      "stream":      "stdout | stderr", 
+      "timestamp":   "2026-04-26T10:00:06.123Z", 
+      "content":     "Collecting flask==3.0.0" 
+    } 
+  ], 
+  "total":     842, 
+  "page":        1, 
+  "page_size": 100 
+} 
+ 
+GET /api/v1/pipelines/{id}/report 
+Yanit (200 OK): 
+{ 
+  "pipeline_id":    "uuid", 
+  "status":         "SUCCESS | FAILED", 
+  "total_tests":     24, 
+  "passed":          22, 
+  "failed":           2, 
+  "skipped":          0, 
+  "duration_sec":   18.4 
+} 
+ 
+1.3  Repository Endpoint'leri 
+Metot Endpoint Aciklama 
+GET /api/v1/repositories Izlenen depolari listele 
+POST /api/v1/repositories Yeni depo ekle 
+DELETE /api/v1/repositories/{id} Depoyu sil 
+ 
+POST /api/v1/repositories 
+Istek govdesi: 
+{ 
+  "url":            "https://github.com/org/repo",  // zorunlu 
+  "default_branch": "main",                         // zorunlu 
+  "webhook_secret": "gizli_anahtar"                 // zorunlu 
+} 
+ 
+Yanit (201 Created): 
+{ 
+  "id":             "uuid", 
+  "url":            "https://github.com/org/repo", 
+
+===== PAGE 6 =====
+  "default_branch": "main", 
+  "created_at":     "2026-04-26T09:00:00Z" 
+} 
+ 
+1.4  Standart Hata Yanit Formati 
+Tum endpoint'ler hata durumunda asagidaki formati dondurur. Dashboard bu formati kullanarak 
+kullaniciya mesaj gosterir. 
+{ 
+  "error": { 
+    "code":    "PIPELINE_NOT_FOUND | INVALID_INPUT | UNAUTHORIZED | ...", 
+    "message": "Insan tarafindan okunabilir aciklama", 
+    "detail":  "Opsiyonel teknik detay (gelistirici icin)" 
+  } 
+} 
+ 
+HTTP 
+Kodu 
+error.code Ne Zaman? 
+400 INVALID_INPUT Eksik/hatali istek govdesi veya parametre 
+401 UNAUTHORIZED JWT token eksik, suresi dolmus veya gecersiz 
+403 FORBIDDEN Yetki yok (rol kontrolu) 
+404 PIPELINE_NOT_FOUND Istenen pipeline/repo bulunamadi 
+409 ALREADY_RUNNING Ayni branch icin zaten RUNNING pipeline var 
+422 VALIDATION_ERROR Pydantic sema dogrulama hatasi 
+500 INTERNAL_ERROR Beklenmedik sunucu hatasi 
+ 
+  
+
+===== PAGE 7 =====
+2. Runner  —  Orchestrator'a Bildirdigii Arayuz Sahip: Kisi 2  (Aleyna) 
+ 
+Runner, Orchestrator'in REST API'sini iki amacla kullanir: (1) adim durumunu guncellemek, (2) log 
+satirlarini gondermek. Bu iki endpoint'i Orchestrator saglar, Runner tuketir. 
+ 
+Onemli 
+Runner bu endpoint'leri dogrudan cagirir. Orchestrator bu endpoint'leri acmak ZORUNDA. Eger 
+endpoint imzasi degisirse Runner'in kodu da guncellenmeli — degisiklik oncesinde koordinasyon 
+zorunlu. 
+ 
+2.1  Adim Durumu Guncelleme 
+PATCH /api/v1/internal/steps/{step_id} 
+Runner, bir adim basladiginda, bittiginde veya basarisiz oldugundan bu endpoint'i cagirir. 
+Istek govdesi: 
+{ 
+  "status":      "RUNNING | SUCCESS | FAILED",    // zorunlu 
+  "exit_code":    0,                              // adim bitince zorunlu, 
+oncesinde null 
+  "started_at":  "2026-04-26T10:00:05Z",         // RUNNING gecisinde doldurulur 
+  "finished_at": "2026-04-26T10:01:00Z"          // SUCCESS/FAILED gecisinde 
+doldurulur 
+} 
+ 
+Yanit (200 OK): 
+{ 
+  "step_id": "uuid", 
+  "status":  "RUNNING | SUCCESS | FAILED" 
+} 
+ 
+2.2  Log Satiri Gonderme 
+POST /api/v1/internal/steps/{step_id}/logs 
+Runner, her stdout/stderr satirini (veya toplu olarak birden fazlasini) bu endpoint ile Orchestrator'a 
+iletir. 
+Istek govdesi: 
+{ 
+  "lines": [ 
+    { 
+      "line_number":  1, 
+      "stream":      "stdout | stderr", 
+      "timestamp":   "2026-04-26T10:00:06.123Z", 
+
+===== PAGE 8 =====
+      "content":     "Collecting flask==3.0.0" 
+    }, 
+    { 
+      "line_number":  2, 
+      "stream":      "stdout", 
+      "timestamp":   "2026-04-26T10:00:06.250Z", 
+      "content":     "  Downloading flask-3.0.0-py3-none-any.whl" 
+    } 
+  ] 
+} 
+ 
+Yanit (201 Created): 
+{ 
+  "saved": 2    // kaydedilen satir sayisi 
+} 
+ 
+2.3  Pipeline Durumu Guncelleme 
+PATCH /api/v1/internal/pipelines/{pipeline_id} 
+Runner, pipeline'in genel durumunu degistirmesi gerektiginde bu endpoint'i kullanir (ornegin tum 
+adimlar bittikten sonra SUCCESS/FAILED). 
+Istek govdesi: 
+{ 
+  "status":      "RUNNING | SUCCESS | FAILED | STOPPED",  // zorunlu 
+  "finished_at": "2026-04-26T10:05:00Z"                   // 
+SUCCESS/FAILED/STOPPED icin zorunlu 
+} 
+ 
+Yanit (200 OK): 
+{ 
+  "pipeline_id": "uuid", 
+  "status":      "SUCCESS" 
+} 
+ 
+2.4  Redis Kuyrugu Mesaj Formati 
+Orchestrator, Redis'teki 'pipeline_jobs' kuyruğuna asagidaki JSON'u push'lar. Runner bu kuyruktan 
+okur. 
+{ 
+  "pipeline_id":  "uuid", 
+  "repo_url":     "https://github.com/org/repo", 
+  "branch":       "main", 
+  "commit_hash":  "a1b2c3d4e5f6", 
+  "workspace":    "/shared/workspaces/<pipeline_id>",   // klonlanan kodun yolu 
+
+===== PAGE 9 =====
+  "steps": ["install", "build", "test"],                // sirasyla calistirilacak 
+adimlar 
+  "step_ids": { 
+    "install": "uuid-1", 
+    "build":   "uuid-2", 
+    "test":    "uuid-3" 
+  }, 
+  "timeout_sec": 600   // toplam pipeline zaman asimi 
+} 
+ 
+  
+
+===== PAGE 10 =====
+3. Repository Manager  —  Sagladigi Arayuzler Sahip: Kisi 3  (Zeynep 
+Sude) 
+ 
+Repository Manager iki endpoint saglar: GitHub'dan gelen webhook olaylari icin /webhook ve 
+Dashboard uzerinden manuel tetikleme icin /trigger. 
+ 
+3.1  GitHub Webhook Endpoint'i 
+POST /webhook 
+GitHub bu endpoint'e push olayi oldugunda POST atar. Repo Manager imzayi dogrular, branch'i 
+filtreler ve Orchestrator'a pipeline baslatma istegi gonderir. 
+ 
+GitHub'in gonderdigi onemli header'lar: 
+Header Deger Aciklama 
+X-GitHub-Event push Olay tipi 
+X-Hub-Signature-256 sha256=<hmac_degeri> HMAC-SHA256 imzasi (dogrulama icin) 
+Content-Type application/json Govde formati 
+ 
+Repo Manager'in Orchestrator'a gonderdigi pipeline tetikleme istegi: 
+POST /api/v1/pipelines 
+{ 
+  "repo_url":     "https://github.com/org/repo", 
+  "branch":       "main", 
+  "commit_hash":  "a1b2c3d4e5f6", 
+  "commit_msg":   "fix: null pointer in parser", 
+  "commit_author":"Ali Veli", 
+  "trigger_type": "webhook" 
+} 
+ 
+Webhook yanit kodlari: 
+HTTP 
+Kodu 
+Anlami 
+200 Istek alindi ve islendi (pipeline QUEUED oldu veya branch filtresi ile silindi) 
+401 HMAC imzasi gecersiz 
+400 Bozuk JSON veya eksik alan 
+ 
+3.2  Manuel Tetikleme Endpoint'i 
+POST /trigger 
+
+===== PAGE 11 =====
+Dashboard bu endpoint'i dogrudan cagirmaz. Dashboard Orchestrator'a POST /api/v1/pipelines 
+gonderir. Orchestrator gerektiginde Repo Manager'i cagirir. Bu endpoint Orchestrator-ic iletisim icindir. 
+ 
+Orchestrator'dan gelen istek govdesi: 
+{ 
+  "repo_url": "https://github.com/org/repo",  // zorunlu 
+  "branch":   "main"                          // zorunlu 
+} 
+ 
+Repo Manager yaniti (200 OK): 
+{ 
+  "repo_url":     "https://github.com/org/repo", 
+  "branch":       "main", 
+  "commit_hash":  "a1b2c3d4e5f6", 
+  "commit_msg":   "feat: add new feature", 
+  "commit_author":"Ali Veli", 
+  "workspace":    "/shared/workspaces/tmp-<uuid>"   // klonlanan kodun yolu 
+} 
+ 
+  
+
+===== PAGE 12 =====
+4. ci-config.yaml  —  Proje Yapilandirma Dosyasi Herkes okur, Runner 
+yorumlar 
+ 
+Test edilecek her proje, kendi GitHub deposunun kok dizinine ci-config.yaml koyar. Runner bu dosyayi 
+okuyarak hangi Docker imajini kullanacagini ve hangi komutlari calistirdigini anlarsIniz. 
+ 
+4.1  Tam Sema 
+# ci-config.yaml  —  proje kok dizinine yerlestirilir 
+  
+runtime: python | nodejs | java       # zorunlu 
+image:   python:3.11-slim             # opsiyonel; verilmezse runtime'a gore 
+otomatik secilir 
+  
+steps: 
+  install: 
+    command: pip install -r requirements.txt   # zorunlu 
+    timeout: 120                               # saniye cinsinden (varsayilan: 
+120) 
+  
+  build: 
+    command: echo 'no build step'             # zorunlu (build yoksa echo kullan) 
+    timeout: 180 
+  
+  test: 
+    command: pytest tests/ -v --tb=short      # zorunlu 
+    timeout: 300 
+  
+branches:                  # opsiyonel; verilmezse sadece main ve develop izlenir 
+  - main 
+  - develop 
+  - staging 
+ 
+4.2  Runtime'a Gore Varsayilan Docker Imajlari 
+runtime degeri Otomatik secilen Docker imaji Test komutu ornegi 
+python python:3.11-slim pytest tests/ -v 
+nodejs node:20-alpine npm test 
+java maven:3.9-eclipse-temurin-17 mvn test 
+ 
+  
+
+===== PAGE 13 =====
+5. Ortak Veri Tipleri ve Sabitler Herkes kullanir 
+ 
+5.1  Pipeline Durumlari 
+Deger Anlami Gecis Kosulu 
+QUEUED Olusturuldu, Runner bekleniyor Pipeline yaratildiginda 
+RUNNING Runner alip container'i baslatti Runner kuyruktaki isi aldinda 
+SUCCESS Tum adimlar exit code 0 ile bitti Son adim SUCCESS olunca 
+FAILED En az bir adim basarisiz oldu / 
+timeout 
+Herhangi bir adim FAILED olunca 
+STOPPED Kullanici durdurdu POST /pipelines/{id}/stop cagirilinca 
+ 
+5.2  Step Durumlari 
+Deger Anlami 
+PENDING Henuz baslamadi (onceki adim suruyor) 
+RUNNING Su an calistirilıyor 
+SUCCESS Tamamlandi, exit code 0 
+FAILED Tamamlandi, exit code != 0 VEYA timeout 
+ 
+5.3  Tarih/Saat Formati 
+Tum tarih/saat alanlari ISO 8601 formatinda, UTC saat diliminde, milisaniye hassasiyetinde olmalidir: 
+"2026-04-26T10:00:06.123Z" 
+ 
+5.4  UUID Formati 
+Tum id alanlari standart UUID v4 formatinda olmalidir: 
+"550e8400-e29b-41d4-a716-446655440000" 
+ 
+5.5  Internal Endpoint'ler vs. Public Endpoint'ler 
+On-ek Kim Kullanir? JWT Gerekir mi? 
+/api/v1/internal/... Sadece diger backend servisleri 
+(Runner, Repo Manager) 
+Hayir — ayni ag icinde, servis-
+servis iletisim 
+
+===== PAGE 14 =====
+/api/v1/... Dashboard ve dis dunyadan gelen 
+istekler 
+Evet — her istekte Authorization: 
+Bearer <token> 
+/webhook GitHub (dis aktor) Hayir — HMAC-SHA256 ile 
+dogrulanir 
+ 
+6. Degisiklik Protokolu 
+Bu belgede bir sey degismesi gerekiyorsa asagidaki adimlar izlenir: 
+• Degisikligi yapacak kisi once ekibi WhatsApp/Discord/toplanti yoluyla bilgilendirir. 
+• Herkes onay verirse bu belgede ilgili bolum guncellenir (surum numarasi arttirilir). 
+• Degisiklik develop branch'ine merge edilmeden once etkilenen diger modullerin sahipleri 
+kodlarini gunceller. 
+• Hicbir zaman 'once kodu degistir, sonra belgeyi guncelle' yapilmaz. 
+ 
+Hangi Degisiklikler Bu Protokolu Gerektirir? 
+Yeni bir endpoint ekleme veya silme  ·  Mevcut endpoint'in URL'ini degistirme  ·  JSON alan adi veya 
+tipini degistirme  ·  Yeni zorunlu alan ekleme  ·  HTTP durum kodunu degistirme  ·  Redis mesaj 
+formatini degistirme  ·  ci-config.yaml semasini degistirme 
+ 
+ 
+  v1.0  —  Son guncelleme: Nisan 2026  —  Tum degisiklikler icin protokol 6. 
+Bolum'e bakin 
+ 
+
