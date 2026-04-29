@@ -13,7 +13,7 @@ class ContainerManager:
             logger.error(f"Failed to connect to Docker daemon: {e}")
             raise
 
-    def create_container(self, image: str, command: list, volumes: dict) -> Optional[docker.models.containers.Container]:
+    def create_container(self, image: str, command: list, volumes: dict, working_dir: str = "/workspace") -> Optional[docker.models.containers.Container]:
         """Creates a docker container with specified constraints."""
         if not volumes or not isinstance(volumes, dict):
             logger.error("Volumes parameter is empty or invalid.")
@@ -40,7 +40,7 @@ class ContainerManager:
                 # Resource limits (example: 1 CPU, 512MB RAM)
                 nano_cpus=1000000000,
                 mem_limit="512m",
-                working_dir="/workspace"
+                working_dir=working_dir
             )
             logger.info(f"Container created with ID {container.id[:12]}")
             return container

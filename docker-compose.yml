@@ -64,6 +64,7 @@ services:
       REDIS_HOST: redis
       REDIS_PORT: 6379
       QUEUE_NAME: pipeline_jobs
+      WORKSPACE_VOLUME: ci_automation_system_workspaces
     volumes:
       - /var/run/docker.sock:/var/run/docker.sock
       - workspaces:/shared/workspaces
