@@ -1,0 +1,16 @@
+{
+  "ref": "refs/heads/main",
+  "after": "abc1234567890def",
+  "repository": {
+    "name": "sample-repo",
+    "clone_url": "https://github.com/org/sample-repo.git"
+  },
+  "head_commit": {
+    "id": "abc1234567890def",
+    "message": "Initial integration test",
+    "timestamp": "2026-04-28T10:00:00Z",
+    "author": {
+      "name": "Zeynep"
+    }
+  }
+}

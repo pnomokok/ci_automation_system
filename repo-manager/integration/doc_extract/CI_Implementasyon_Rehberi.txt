@@ -1,0 +1,591 @@
+FILE: CI_Implementasyon_Rehberi.pdf
+PAGES: 14
+
+===== PAGE 1 =====
+  CI OTOMASYON SİSTEMİ 
+ 
+Implementasyon Rehberi 
+GitHub Repo Yapisi - Gorev Dagilimi - Teknoloji Rehberi 
+CENG314 Yazilim Muhendisligi - 4 Kisilik Gelistirici Ekibi 
+ 
+1. Sistem Nedir? (Kısa Rehber) 
+Bu proje, bir GitHub deposundaki her kod değişikliğini otomatik olarak algılayan, kodu derleyen ve 
+testleri çalıştıran bir CI (Continuous Integration) otomasyon sistemidir. Sonuçlar web tabanlı bir 
+dashboard üzerinden ekibe sunulur. 
+ 
+1.1 Sistemin 4 Ana Modülü 
+Sistem birbirinden bağımsız 4 modülden oluşur. Her modül ayrı bir servis olarak çalışır ve kendi 
+sorumluluğu vardır: 
+ 
+Modül Ne Yapar? Kimin Görevi? 
+CI Orchestrator Pipeline'ların yaşam döngüsünü 
+yönetir. API sunucusudur. Her 
+şeyin koordinatörü. 
+Kişi 1 (Irmak) 
+Runner Kodu Docker container içinde 
+çalıştırır. Derleme, test, log 
+toplama işlerini yapar. 
+Kişi 2 (Aleyna) 
+Repository Manager Git deposunu izler, değişiklikleri 
+algılar, webhook alır, pipeline'ı 
+tetikler. 
+Kişi 3 (Zeynep Sude) 
+Web Dashboard React ile yapılmış arayüz. 
+Pipeline durumlarını ve logları 
+gösterir. 
+Kişi 4 (Rabia) 
+ 
+1.2 Sistem Nasıl Çalışır? (Adım Adım) 
+Bir geliştirici GitHub'a kod push'ladığında sırayla şunlar olur: 
+ 
+Adım Olan Şey Hangi Modül? 
+1 GitHub, /webhook adresine 
+POST isteği gönderir. 
+Repository Manager 
+
+===== PAGE 2 =====
+2 HMAC imzası doğrulanır, 
+branch filtresi uygulanır. 
+Repository Manager 
+3 Repo klonlanır, commit bilgisi 
+çıkarılır. 
+Repository Manager 
+4 Orchestrator'a 'pipeline başlat' 
+isteği gider. 
+Repository Manager → 
+Orchestrator 
+5 Pipeline veritabanına QUEUED 
+olarak yazılır. 
+CI Orchestrator 
+6 Redis kuyruğuna iş eklenir. CI Orchestrator 
+7 Runner kuyruğu dinler, işi alır. Runner 
+8 Docker container başlatılır, kod 
+mount edilir. 
+Runner 
+9 Install → Build → Test adımları 
+sırayla çalışır. 
+Runner 
+10 Her adımın logu veritabanına 
+yazılır. 
+Runner → Orchestrator 
+11 Pipeline durumu SUCCESS 
+veya FAILED olarak güncellenir. 
+CI Orchestrator 
+12 Kullanıcı dashboard'da sonucu 
+görür. 
+Web Dashboard 
+ 
+1.3 Kullanılan Teknolojiler (Basit Açıklama) 
+Projeyi anlamak için bilmen gereken teknolojiler: 
+ 
+Teknoloji Ne İşe Yarar? Nerede Kullanılıyor? 
+Python 3.11+ Backend programlama dili. CI 
+Orchestrator, Runner ve Repo 
+Manager Python ile yazılır. 
+Backend 
+FastAPI Python için hızlı web 
+framework'ü. REST API 
+endpoint'lerini kolayca 
+tanımlamamızı sağlar. 
+Orchestrator, Repo Manager 
+PostgreSQL İlişkisel veritabanı. Pipeline 
+kayıtları, step verileri ve loglar 
+burada saklanır. 
+Orchestrator 
+Redis Mesaj kuyruğu. Birden fazla 
+pipeline'ın sırayla çalışması için 
+kullanılır. 
+Orchestrator ↔ Runner 
+Docker Her pipeline için izole bir 
+çalışma ortamı (container) 
+Runner 
+
+===== PAGE 3 =====
+oluşturur. Güvenli ve temiz 
+ortam sağlar. 
+Docker SDK (docker-py) Python'dan Docker'ı 
+programatik olarak yönetmeyi 
+sağlar. 
+Runner 
+SQLAlchemy Python için ORM aracı. SQL 
+yazmak yerine Python 
+nesneleriyle veritabanı işlemleri 
+yaparız. 
+Orchestrator 
+Alembic Veritabanı şema değişikliklerini 
+versiyon kontrol gibi yönetir. 
+Migration aracı. 
+Orchestrator 
+Pydantic API için veri doğrulama 
+kütüphanesi. Gelen/giden 
+verilerin doğru formatta olmasını 
+garantiler. 
+Orchestrator 
+GitPython Python'dan Git işlemleri 
+yapmayı sağlar: clone, 
+checkout, commit bilgisi alma. 
+Repository Manager 
+GitHub Webhooks GitHub'ın push olaylarında 
+belirlediğimiz adrese HTTP 
+isteği atması mekanizması. 
+Repository Manager 
+React JavaScript UI kütüphanesi. Web 
+dashboard'un tamamı React ile 
+yazılır. 
+Web Dashboard 
+Axios JavaScript için HTTP istemcisi. 
+Dashboard, Orchestrator 
+API'sine Axios ile istek atar. 
+Web Dashboard 
+TailwindCSS CSS framework'ü. Hazır 
+class'larla hızlıca stil yazılır. 
+Web Dashboard 
+JWT JSON Web Token. API'ye 
+erişim için kimlik doğrulama 
+tokenı. 
+Orchestrator + Dashboard 
+Docker Compose Tüm servisleri (Orchestrator, 
+Runner, Repo Manager, DB, 
+Redis) tek komutla ayağa 
+kaldırır. 
+Tüm sistem 
+ 
+  
+
+===== PAGE 4 =====
+2. GitHub Repository Yapısı 
+Merge conflict'leri en aza indirmek ve ekip iş birliğini kolaylaştırmak için her modül kendi 
+klasöründe yaşar. Hiçbir kişinin yazdığı kod, başka bir kişinin modül klasörünü etkilemez. 
+ 
+2.1 Klasör Yapısı 
+ 
+  Repo Kökü: gaar-ci/ 
+ 
+Yol Açıklama 
+gaar-ci/ Proje kökü 
+├── orchestrator/ Kişi 1 (Irmak) · CI Orchestrator 
+│   ├── app/ FastAPI uygulaması 
+│   │   ├── api/ Endpoint router'ları (pipelines, webhooks, repos) 
+│   │   ├── services/ İş mantığı (PipelineService, StepService, LogService) 
+│   │   ├── repositories/ Veritabanı erişim katmanı (SQLAlchemy) 
+│   │   ├── schemas/ Pydantic modelleri (istek/yanıt şemaları) 
+│   │   ├── models/ SQLAlchemy ORM modelleri (tablolar) 
+│   │   └── core/ Config, güvenlik, logger, bağımlılıklar 
+│   ├── migrations/ Alembic migration dosyaları 
+│   ├── tests/ Orchestrator birim testleri 
+│   ├── Dockerfile Orchestrator container tanımı 
+│   └── requirements.txt Python bağımlılıkları 
+├── runner/ Kişi 2 (Aleyna) · Runner 
+│   ├── app/ Runner uygulaması 
+│   │   ├── 
+container_manager.py 
+Docker container yaşam döngüsü 
+│   │   ├── 
+step_executor.py 
+Adım yürütme motoru 
+│   │   ├── 
+log_collector.py 
+stdout/stderr akış toplama 
+│   │   ├── 
+timeout_guard.py 
+Zaman aşımı yönetimi 
+│   │   └── 
+image_resolver.py 
+ci-config.yaml okuma, Docker imaj seçimi 
+│   ├── tests/ Runner birim testleri 
+│   ├── Dockerfile Runner container tanımı 
+│   └── requirements.txt Python bağımlılıkları 
+├── repo-manager/ Kişi 3 (Zeynep Sude) · Repository Manager 
+
+===== PAGE 5 =====
+│   ├── app/ Repo Manager uygulaması 
+│   │   ├── 
+webhook_receiver.py 
+GitHub webhook endpoint'i 
+│   │   ├── 
+signature_validator.py 
+HMAC-SHA256 doğrulama 
+│   │   ├── git_client.py GitPython sarmalayıcı (clone, checkout, pull) 
+│   │   ├── 
+branch_filter.py 
+İzin verilen branch filtresi 
+│   │   ├── 
+commit_parser.py 
+Commit bilgisi çıkarma 
+│   │   └── 
+trigger_handler.py 
+Manuel tetikleme endpoint'i 
+│   ├── tests/ Repo Manager birim testleri 
+│   ├── Dockerfile Repo Manager container tanımı 
+│   └── requirements.txt Python bağımlılıkları 
+├── dashboard/ Kişi 4 (Rabia) · Web Dashboard 
+│   ├── src/ React kaynak kodu 
+│   │   ├── components/ Yeniden kullanılabilir bileşenler 
+│   │   │   ├── 
+PipelineListPage/ 
+Ana liste ekranı 
+│   │   │   ├── 
+PipelineDetailPage/ 
+Pipeline detay ekranı 
+│   │   │   ├── LogViewer/ Log görüntüleyici 
+│   │   │   ├── 
+TriggerForm/ 
+Manuel tetikleme formu 
+│   │   │   └── 
+StatusBadge/ 
+Renk kodlu durum etiketi 
+│   │   ├── services/ Axios API istemcisi 
+│   │   ├── context/ React Context (global state) 
+│   │   └── App.jsx Kök bileşen, router 
+│   ├── public/ Statik dosyalar 
+│   ├── tests/ Frontend testleri 
+│   └── package.json Node.js bağımlılıkları 
+├── shared/ Ortak dosyalar (tüm ekip) 
+│   └── ci-
+config.example.yaml 
+ci-config.yaml örneği 
+├── docker-compose.yml Tüm servisleri ayağa kaldıran yapılandırma (tüm ekip) 
+├── docker-compose.dev.yml Geliştirme ortamı overrides 
+├── .env.example Ortam değişkenleri örneği (tüm ekip) 
+├── .gitignore Git ignore kuralları 
+└── README.md Proje genel tanıtımı 
+ 
+
+===== PAGE 6 =====
+2.2 Branch Stratejisi 
+Merge conflict'leri önlemenin en etkili yolu doğru branch stratejisi kullanmaktır. Önerilen model: 
+ 
+Branch Adı Amacı Kim Kullanır? 
+main Stabil, çalışan kod. Direkt push 
+yasak. Sadece PR ile merge 
+edilir. 
+Tüm ekip 
+develop Entegrasyon branch'i. 
+Tamamlanan özellikler buraya 
+merge edilir. 
+Tüm ekip 
+feature/orchestrator-* Orchestrator ile ilgili her yeni 
+özellik veya düzeltme. 
+Kişi 1 
+feature/runner-* Runner ile ilgili her yeni özellik 
+veya düzeltme. 
+Kişi 2 
+feature/repo-manager-* Repository Manager ile ilgili yeni 
+özellik veya düzeltme. 
+Kişi 3 
+feature/dashboard-* Dashboard ile ilgili yeni özellik 
+veya düzeltme. 
+Kişi 4 
+ 
+Merge Conflict Önleme Kuralı 
+Her kişi yalnızca kendi modülünün klasörüne (orchestrator/, runner/, repo-manager/, 
+dashboard/) dokunur. docker-compose.yml ve .env.example gibi ortak dosyalara dokunmadan 
+önce ekiple koordinasyon sağlanır. Bu kurala uyulduğu sürece merge conflict yaşanmaz. 
+ 
+2.3 Commit Mesajı Standartları 
+Herkes aynı formatı kullanırsa geçmişi okumak çok kolaylaşır: 
+ 
+Format Ne Zaman? Örnek 
+feat(modül): kısa açıklama Yeni özellik eklendiğinde feat(orchestrator): pipeline stop 
+endpoint eklendi 
+fix(modül): kısa açıklama Bug düzeltildiğinde fix(runner): container cleanup 
+hatası düzeltildi 
+test(modül): kısa açıklama Test 
+eklendiğinde/güncellendiğinde 
+test(repo-manager): webhook 
+signature testi 
+docs(modül): kısa açıklama Dokümantasyon değişikliği docs(dashboard): README 
+güncellendi 
+refactor(modül): kısa açıklama Davranış değişmeden kod 
+düzenlemesi 
+refactor(orchestrator): service 
+katmanı ayrıştırıldı 
+
+===== PAGE 7 =====
+chore: kısa açıklama Bağımlılık, config güncellemeleri chore: docker-compose 
+geliştirme ortamı eklendi 
+ 
+2.4 Pull Request Süreci 
+• Her özellik kendi feature branch'inde geliştirilir. 
+• develop'a merge etmeden önce PR açılır. 
+• En az 1 başka ekip üyesi code review yapar. 
+• CI testleri geçmeden merge edilmez. 
+• Ortak dosyalara dokunacak PR'lar için tüm ekip bilgilendirilir. 
+ 
+  
+
+===== PAGE 8 =====
+3. Görev Dağılımı 
+Her kişinin sorumluluğu açıkça belirlenmiştir. Kendi modülünü geliştirmek, test etmek ve API 
+sözleşmesini ekiple paylaşmak her kişinin birincil sorumluluğudur. 
+ 
+Kişi 1 · Irmak Su · CI Orchestrator & API 
+MODÜL 
+CI Orchestrator 
+TEKNOLOJİLER 
+• Python 3.11+ 
+• FastAPI 
+• PostgreSQL 
+• SQLAlchemy 
+• Alembic 
+• Pydantic 
+• Redis 
+• JWT 
+GÖREVLER 
+✓  FastAPI uygulama iskeletini kur (main.py, router yapısı) 
+✓  PostgreSQL veritabanı şemasını oluştur (pipelines, steps, logs, 
+repositories, users tabloları) 
+✓  Alembic migration dosyalarını yaz 
+✓  SQLAlchemy ORM modellerini tanımla 
+✓  Pipeline CRUD API endpoint'lerini geliştir (GET/POST 
+/pipelines, GET /pipelines/{id}) 
+✓  Pipeline durum makinesini geliştir 
+(QUEUED→RUNNING→SUCCESS/FAILED/STOPPED) 
+✓  Pipeline durdurma endpoint'ini geliştir (POST 
+/pipelines/{id}/stop) 
+✓  Log görüntüleme endpoint'ini geliştir (GET /pipelines/{id}/logs) 
+✓  Test raporu endpoint'ini geliştir (GET /pipelines/{id}/report) 
+✓  Redis kuyruğu entegrasyonunu yap (pipeline'ları kuyruğa 
+ekleme, eşzamanlılık limiti) 
+✓  Runner'dan gelen adım sonuçlarını alan endpoint'i geliştir 
+✓  JWT tabanlı kimlik doğrulama sistemini kur 
+✓  OpenAPI/Swagger dokümantasyonunun otomatik 
+oluşturulduğunu doğrula 
+✓  Orchestrator için birim testleri yaz (%70 coverage hedefi) 
+✓  docker-compose.yml'de orchestrator servisini tanımla 
+ 
+Kişi 2 · Aleyna  · Runner & Docker 
+MODÜL 
+Runner 
+TEKNOLOJİLER 
+• Python 3.11+ 
+• Docker SDK (docker-py) 
+• Redis 
+• subprocess 
+• Log akış mekanizmaları 
+GÖREVLER 
+✓  Redis kuyruğunu dinleyen Runner ana döngüsünü geliştir 
+✓  ContainerManager modülünü geliştir: create_container(), 
+start(), stop(), cleanup() 
+✓  ImageResolver'ı geliştir: ci-config.yaml oku, doğru Docker 
+imajını seç 
+✓  Repository kodunu container'a mount etme mekanizmasını kur 
+✓  StepExecutor'ı geliştir: install → build → test adımlarını sırayla 
+çalıştır 
+
+===== PAGE 9 =====
+✓  LogCollector'ı geliştir: stdout/stderr akışlarını gerçek zamanlı 
+yakala 
+✓  Toplanan logları Orchestrator'a HTTP üzerinden gönder 
+✓  TimeoutGuard'ı geliştir: her adım için timeout mekanizması 
+✓  Container güvenlik kısıtlarını uygula (--network=none, 
+CPU/RAM limitleri, --rm) 
+✓  Pipeline başarısız olduğunda adımların zincirini durdur 
+(FAILED cascade) 
+✓  Kullanıcı stop isteğinde container'ı güvenli sonlandır 
+✓  Python, Node.js, Java için Docker imaj desteğini test et 
+✓  Runner için birim ve entegrasyon testleri yaz 
+✓  docker-compose.yml'de runner servisini tanımla 
+ 
+Kişi 3 · Zeynep Sude· Repository Manager & Webhook 
+MODÜL 
+Repository Manager 
+TEKNOLOJİLER 
+• Python 3.11+ 
+• GitPython 
+• GitHub Webhooks API 
+• FastAPI (webhook 
+endpoint) 
+• HMAC-SHA256 
+GÖREVLER 
+✓  WebhookReceiver'ı geliştir: /webhook endpoint'ini sun, GitHub 
+POST isteklerini al 
+✓  SignatureValidator'ı geliştir: HMAC-SHA256 imzasını doğrula, 
+başarısız isteklere 401 dön 
+✓  GitClient'ı geliştir: GitPython ile clone, checkout, pull işlemlerini 
+sarmala 
+✓  BranchFilter'ı geliştir: ci-config.yaml'daki izin verilen branch 
+listesini uygula 
+✓  CommitParser'ı geliştir: payload'dan hash, yazar, mesaj, tarih 
+bilgilerini çıkar 
+✓  TriggerHandler'ı geliştir: manuel tetikleme için /trigger 
+endpoint'ini sun 
+✓  Orchestrator'a pipeline oluşturma isteği gönderme 
+entegrasyonu 
+✓  Klonlanan kodu Runner'ın erişeceği paylaşımlı volume'e 
+yerleştirme 
+✓  İzin verilmeyen branch'lere ait webhook olaylarını sessizce 
+reddet ve logla 
+✓  Webhook güvenliği: timing attack korumalı sabit zamanlı 
+karşılaştırma uygula 
+✓  Repo Manager için birim ve entegrasyon testleri yaz 
+✓  docker-compose.yml'de repo-manager servisini tanımla 
+✓  GitHub webhook'u test etmek için ngrok/smee.io gibi araçları 
+belgele 
+ 
+
+===== PAGE 10 =====
+Kişi 4 · Rabia  · Web Dashboard & Frontend 
+MODÜL 
+Web Dashboard 
+TEKNOLOJİLER 
+• React 
+• JavaScript (ES6+) 
+• Axios 
+• TailwindCSS 
+• HTML5 
+• CSS3 
+GÖREVLER 
+✓  React uygulamasını kur (Vite veya Create React App ile) 
+✓  Axios örneğini tek merkezden yapılandır (base URL, JWT 
+interceptor, hata yakalama) 
+✓  PipelineListPage'i geliştir: tablo, filtreleme, durum rozeti 
+✓  PipelineDetailPage'i geliştir: adım süresi, durum, log önizleme 
+✓  LogViewer bileşenini geliştir: sayfalama/akış, arama, 
+kopyalama 
+✓  TriggerForm bileşenini geliştir: URL ve branch input, 
+doğrulama, gönderim 
+✓  StatusBadge bileşenini geliştir: 
+QUEUED/RUNNING/SUCCESS/FAILED/STOPPED için renk 
+kodlu etiketler 
+✓  RUNNING pipeline'lar için 5 saniyelik polling mekanizmasını 
+uygula 
+✓  API hata durumları için kullanıcı dostu mesajlar göster, 
+sayfanın donmamasını sağla 
+✓  Renk paleti ve tipografi standardını kur (Inter, JetBrains Mono, 
+koyu tema) 
+✓  Responsive tasarım: 1280×720 ve üzeri tam destek 
+✓  JWT token yönetimini uygula (login, logout, token yenileme) 
+✓  Frontend testleri yaz 
+✓  docker-compose.yml'de dashboard servisini (Nginx üzerinden) 
+tanımla 
+ 
+  
+
+===== PAGE 11 =====
+4. Ortak Sorumluluklar 
+Her ekip üyesinin kendi modülüne ek olarak yerine getireceği ortak görevler: 
+ 
+4.1 API Sözleşmeleri 
+En Kritik Kural 
+Kişi 1 (Orchestrator) API'yi ilk tasarlamalı ve endpoint listesini ekiple paylaşmalıdır. Kişi 2, 3 ve 4 
+kendi kodlarını bu API sözleşmesine göre yazarlar. Sözleşme değişirse herkesi HEMEN 
+bilgilendir. 
+ 
+Kişi Sağladığı Interface Bekleyen Kişi 
+Kişi 1 (Orchestrator) REST API endpoint'leri (tam 
+URL ve JSON şeması) 
+Kişi 4 (Dashboard) 
+Kişi 2 (Runner) Orchestrator'a adım sonucu 
+gönderme formatı 
+Kişi 1 (Orchestrator) 
+Kişi 3 (Repo Manager) Orchestrator'a pipeline tetikleme 
+istek formatı 
+Kişi 1 (Orchestrator) 
+Kişi 4 (Dashboard) Mock API ile bağımsız 
+geliştirme (gerçek API hazır 
+olunca entegre) 
+Kişi 1 (Orchestrator) 
+ 
+4.2 docker-compose.yml 
+Tüm servisler docker-compose.yml içinde tanımlanır. Her kişi kendi servisini ekler. Çakışmayı 
+önlemek için: 
+• Her kişi yalnızca kendi servis bloğunu ekler. 
+• Ortak değişkenlere (PostgreSQL URL, Redis URL) dokunmadan önce ekiple koordinasyon 
+sağla. 
+• Yeni bir port, volume veya environment değişkeni ekleyeceksen ekibi bilgilendir. 
+ 
+Geliştirme Ortamı Kurulumu 
+docker compose up --build komutu tüm sistemi ayağa kaldırır. Her kişi kendi servisini local'de 
+başlatmak için kendi Dockerfile'ını ve requirements.txt'ini güncel tutmalıdır. .env.example 
+dosyasındaki tüm değişkenler doldurularak .env olarak kaydedilir. 
+ 
+4.3 Haftalık Senkronizasyon 
+Ne Yapılır? Neden? 
+Her hafta kısa bir toplantı yapılır Blokajlar erken fark edilir, bağımlılıklar yönetilir 
+
+===== PAGE 12 =====
+Tamamlanan iş develop'a merge edilir Entegrasyon sorunları geciktirilmez 
+API değişiklikleri duyurulur Başkasının kodu kırılmaz 
+Birim testleri her modül için güncellenir %70 coverage hedefine ulaşılır 
+Peer code review yapılır Kod kalitesi artır, bilgi paylaşımı sağlanır 
+ 
+  
+
+===== PAGE 13 =====
+5. Geliştirme Çalışma Akışı 
+5.1 Yeni Bir Özellik Geliştirme Adımları 
+ 
+Adım Yapılacak İş 
+1 develop branch'inden yeni feature branch'i aç: git 
+checkout -b feature/modül-ismi develop 
+2 Özelliği geliştir, düzenli küçük commitler at. 
+3 Birim testlerini yaz ve çalıştır. 
+4 develop'a PR aç. 
+5 En az 1 kişi code review yapsın. 
+6 CI testleri geçerse develop'a merge et. 
+7 Modül tamamlanınca develop'tan main'e PR açılır 
+(tüm ekip onayı). 
+ 
+5.2 Merge Conflict Neden Olmaz? 
+Bu yapı sayesinde merge conflict son derece nadir olur çünkü: 
+• Orchestrator/ klasörüne sadece Kişi 1 yazar. 
+• Runner/ klasörüne sadece Kişi 2 yazar. 
+• Repo-manager/ klasörüne sadece Kişi 3 yazar. 
+• Dashboard/ klasörüne sadece Kişi 4 yazar. 
+• Ortak dosyalara (docker-compose.yml) sırayla ve koordineli şekilde ekleme yapılır. 
+ 
+5.3 Entegrasyon Testi Nasıl Yapılır? 
+Her modül hazır olduğunda docker compose up --build çalıştırılır ve uçtan uca senaryo test edilir: 
+• GitHub test reposuna push yap. 
+• Webhook endpoint'inin isteği aldığını doğrula. 
+• Dashboard'da pipeline'ın QUEUED → RUNNING → SUCCESS geçişlerini gözlemle. 
+• Log çıktılarını kontrol et. 
+ 
+6. İmplementasyon Zaman Çizelgesi 
+SPMP'deki fazlara uygun, implementasyon aşamasına odaklı öneri takvim: 
+ 
+Faz Hedef Sorumlu Önce Tamamlanmalı 
+
+===== PAGE 14 =====
+Faz 2 · Pipeline API Orchestrator: 
+veritabanı şeması, 
+CRUD API, durum 
+makinesi 
+Kişi 1 - 
+Faz 3 · Repo Manager Git clone/checkout, 
+manuel tetikleme 
+/trigger endpoint'i 
+Kişi 3 Faz 2 (API sözleşmesi) 
+Faz 4 · Runner Docker container 
+yönetimi, step yürütme, 
+log toplama 
+Kişi 2 Faz 2 (pipeline modeli) 
+Faz 5 · Test Enteg. Test komutu algılama, 
+otomatik çalıştırma, 
+sonuç analizi 
+Kişi 2 + Kişi 3 Faz 4 
+Faz 6 · Dashboard Pipeline listesi, detay, 
+log viewer, manuel 
+tetikleme UI 
+Kişi 4 Faz 2 (API 
+endpoint'leri) 
+Faz 7 · Webhook GitHub webhook 
+dinleyici, push → 
+otomatik pipeline 
+Kişi 3 Faz 3, Faz 5 
+Faz 8 · Entegrasyon Uçtan uca test, hata 
+düzeltme, 
+dokümantasyon finali 
+Tüm ekip Tüm fazlar 
+ 
+Paralel Geliştirme İpucu 
+Faz 2 (Orchestrator API) herkese bağımlı olduğu için önce tamamlanmalıdır. API endpoint listesi 
+ve JSON şemaları hazırlanır hazırlanmaz Kişi 4 mock API ile dashboard'u geliştirmeye 
+başlayabilir. Kişi 2 ve Kişi 3 de Orchestrator'ın sadece pipeline model yapısını bilmeleri yeterli 
+olduğu için Faz 2 ile eş zamanlı başlayabilirler. 
+ 
+ 
+  Başarılar! 
+ 
+
