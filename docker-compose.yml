@@ -91,9 +91,14 @@ services:
         condition: service_healthy
 
   # ── Kişi 4 · Rabia — Web Dashboard ────────────────────────────────────────
-  # dashboard:
-  #   build: ./dashboard
-  #   (Rabia tarafından eklenecek)
+
+  dashboard:
+    build: ./dashboard
+    ports:
+      - "3000:80"
+    depends_on:
+      orchestrator:
+        condition: service_healthy
 
 volumes:
   postgres_data:
