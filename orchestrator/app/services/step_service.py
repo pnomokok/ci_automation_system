@@ -1,4 +1,4 @@
-from datetime import timezone
+from datetime import datetime, timezone
 
 from fastapi import HTTPException, status
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -27,21 +27,23 @@ class StepService:
                 detail={"code": "PIPELINE_NOT_FOUND", "message": "Step bulunamadı"},
             )
 
+        now = datetime.now(timezone.utc)
         values: dict = {"status": data.status}
-        if data.started_at is not None:
-            values["started_at"] = data.started_at
+
+        started_at = data.started_at or (now if data.status == StepStatus.RUNNING else None)
+        finished_at = data.finished_at or (now if data.status in (StepStatus.SUCCESS, StepStatus.FAILED) else None)
+
+        if started_at is not None:
+            values["started_at"] = started_at
         if data.exit_code is not None:
             values["exit_code"] = data.exit_code
-        if data.finished_at is not None:
-            values["finished_at"] = data.finished_at
-            if step.started_at:
-                started = step.started_at
-                if started.tzinfo is None:
-                    started = started.replace(tzinfo=timezone.utc)
-                finished = data.finished_at
-                if finished.tzinfo is None:
-                    finished = finished.replace(tzinfo=timezone.utc)
-                values["duration_sec"] = int((finished - started).total_seconds())
+        if finished_at is not None:
+            values["finished_at"] = finished_at
+            effective_start = started_at or step.started_at
+            if effective_start:
+                s = effective_start if effective_start.tzinfo else effective_start.replace(tzinfo=timezone.utc)
+                f = finished_at if finished_at.tzinfo else finished_at.replace(tzinfo=timezone.utc)
+                values["duration_sec"] = int((f - s).total_seconds())
 
         updated = await _step_repo.update(session, step_id, values)
         await session.commit()
@@ -81,21 +83,24 @@ class StepService:
                 detail={"code": "PIPELINE_NOT_FOUND", "message": "Pipeline bulunamadı"},
             )
 
+        now = datetime.now(timezone.utc)
+        started_at = now if data.status == PipelineStatus.RUNNING else None
+        finished_at = data.finished_at or (now if data.status in (PipelineStatus.SUCCESS, PipelineStatus.FAILED, PipelineStatus.STOPPED) else None)
+
         duration_sec = None
-        if data.finished_at and pipeline.started_at:
-            started = pipeline.started_at
-            if started.tzinfo is None:
-                started = started.replace(tzinfo=timezone.utc)
-            finished = data.finished_at
-            if finished.tzinfo is None:
-                finished = finished.replace(tzinfo=timezone.utc)
-            duration_sec = int((finished - started).total_seconds())
+        if finished_at:
+            effective_start = pipeline.started_at or started_at
+            if effective_start:
+                s = effective_start if effective_start.tzinfo else effective_start.replace(tzinfo=timezone.utc)
+                f = finished_at if finished_at.tzinfo else finished_at.replace(tzinfo=timezone.utc)
+                duration_sec = int((f - s).total_seconds())
 
         updated = await _pipeline_repo.update_status(
             session,
             pipeline_id,
             data.status,
-            finished_at=data.finished_at,
+            started_at=started_at,
+            finished_at=finished_at,
             duration_sec=duration_sec,
         )
         await session.commit()

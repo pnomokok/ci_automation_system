@@ -48,11 +48,30 @@ services:
         condition: service_healthy
       redis:
         condition: service_healthy
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://localhost:8000/health')"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 15s
 
   # ── Kişi 2 · Aleyna — Runner ───────────────────────────────────────────────
-  # runner:
-  #   build: ./runner
-  #   (Aleyna tarafından eklenecek)
+
+  runner:
+    build: ./runner
+    environment:
+      ORCHESTRATOR_API_URL: http://orchestrator:8000
+      REDIS_HOST: redis
+      REDIS_PORT: 6379
+      QUEUE_NAME: pipeline_jobs
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock
+      - workspaces:/shared/workspaces
+    depends_on:
+      orchestrator:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
 
   # ── Kişi 3 · Zeynep Sude — Repository Manager ─────────────────────────────
   # repo-manager:
