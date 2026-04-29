@@ -128,9 +128,10 @@ class PipelineService:
         )
 
         total, passed, failed, skipped = 0, 0, 0, 0
-        # pytest çıktı örneği: "3 passed, 1 failed, 2 warnings in 4.5s"
+        # pytest summary: "38 passed in 12.60s" / "3 passed, 1 failed, 2 skipped in 4.5s"
+        # "passed" anchor prevents matching at position 0 with all groups None
         pattern = re.compile(
-            r"(?:(\d+) passed)?[,\s]*(?:(\d+) failed)?[,\s]*(?:(\d+) skipped)?.*?in ([\d.]+)s"
+            r"(\d+) passed(?:,\s*(\d+) failed)?(?:,\s*(\d+) skipped)?"
         )
         for log, _ in rows:
             m = pattern.search(log.content)
