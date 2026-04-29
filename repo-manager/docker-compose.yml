@@ -1,0 +1,17 @@
+services:
+  repo-manager:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: repo-manager
+    environment:
+      GITHUB_WEBHOOK_SECRET: change-me
+      ORCHESTRATOR_URL: http://orchestrator:8000
+      WORKSPACE_ROOT: /shared/workspaces
+    ports:
+      - "8081:8081"
+    volumes:
+      - shared-workspaces:/shared/workspaces
+
+volumes:
+  shared-workspaces:

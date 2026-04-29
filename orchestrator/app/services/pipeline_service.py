@@ -56,7 +56,7 @@ class PipelineService:
                 "repo_url":    str(data.repo_url),
                 "branch":      data.branch,
                 "commit_hash": data.commit_hash,
-                "workspace":   f"/shared/workspaces/{pipeline.id}",
+                "workspace":   data.workspace or f"/shared/workspaces/{pipeline.id}",
                 "steps":       [n.value for n, _ in _STEP_ORDER],
                 "step_ids":    step_ids,
                 "timeout_sec": settings.pipeline_timeout_sec,
