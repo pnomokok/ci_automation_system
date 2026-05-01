@@ -3,11 +3,11 @@ import userEvent from '@testing-library/user-event';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
 vi.mock('../src/services/api', () => ({
-  createPipeline: vi.fn(),
+  triggerPipeline: vi.fn(),
   formatApiError: (err) => err?.message || 'Hata oluştu',
 }));
 
-import { createPipeline } from '../src/services/api';
+import { triggerPipeline } from '../src/services/api';
 import TriggerForm from '../src/components/TriggerForm';
 
 describe('TriggerForm', () => {
@@ -41,8 +41,8 @@ describe('TriggerForm', () => {
     });
   });
 
-  it('calls createPipeline with correct args on valid submit', async () => {
-    createPipeline.mockResolvedValue({ data: { id: 'test-id', status: 'QUEUED' } });
+  it('calls triggerPipeline with correct args on valid submit', async () => {
+    triggerPipeline.mockResolvedValue({ data: { id: 'test-id', status: 'QUEUED' } });
     render(<TriggerForm onSuccess={onSuccess} onClose={onClose} />);
 
     await userEvent.type(screen.getByPlaceholderText('https://github.com/org/repo'), 'https://github.com/test/repo');
@@ -52,13 +52,13 @@ describe('TriggerForm', () => {
     fireEvent.click(screen.getByText('Pipeline Başlat'));
 
     await waitFor(() => {
-      expect(createPipeline).toHaveBeenCalledWith('https://github.com/test/repo', 'develop');
+      expect(triggerPipeline).toHaveBeenCalledWith('https://github.com/test/repo', 'develop');
     });
     expect(onSuccess).toHaveBeenCalledWith({ id: 'test-id', status: 'QUEUED' });
   });
 
   it('displays API error message', async () => {
-    createPipeline.mockRejectedValue({ message: 'Sunucu hatası' });
+    triggerPipeline.mockRejectedValue({ message: 'Sunucu hatası' });
     render(<TriggerForm onSuccess={onSuccess} onClose={onClose} />);
 
     await userEvent.type(screen.getByPlaceholderText('https://github.com/org/repo'), 'https://github.com/test/repo');
