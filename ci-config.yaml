@@ -9,7 +9,7 @@ steps:
     command: echo "No build step"
     timeout: 60
   test:
-    command: apt-get install -y -q git && cd orchestrator && ../.venv-orchestrator/bin/pytest tests/ -v --tb=short && cd ../repo-manager && ../.venv-repomanager/bin/pytest tests/ -v --tb=short
+    command: apt-get update -qq && apt-get install -y -q git && cd orchestrator && ../.venv-orchestrator/bin/pytest tests/ -v --tb=short && cd ../repo-manager && ../.venv-repomanager/bin/pytest tests/ -v --tb=short
     timeout: 180
 
 branches:
