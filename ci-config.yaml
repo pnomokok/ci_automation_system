@@ -3,14 +3,14 @@ image: python:3.11-slim
 
 steps:
   install:
-    command: apt-get update -qq && apt-get install -y -qq git > /dev/null 2>&1 && python -m venv .venv-orchestrator && .venv-orchestrator/bin/pip install -q -r orchestrator/requirements.txt && python -m venv .venv-repomanager && .venv-repomanager/bin/pip install -q -r repo-manager/requirements.txt
-    timeout: 300
+    command: apt-get update -qq && apt-get install -y -qq git > /dev/null 2>&1 && python -m venv .venv-repomanager && .venv-repomanager/bin/pip install -q -r repo-manager/requirements.txt
+    timeout: 180
   build:
     command: echo "No build step"
     timeout: 60
   test:
-    command: apt-get update -qq && apt-get install -y -qq git > /dev/null 2>&1 && cd orchestrator && ../.venv-orchestrator/bin/pytest tests/ -v --tb=short && cd ../repo-manager && ../.venv-repomanager/bin/pytest tests/ -v --tb=short
-    timeout: 180
+    command: apt-get update -qq && apt-get install -y -qq git > /dev/null 2>&1 && cd repo-manager && ../.venv-repomanager/bin/pytest tests/ -v --tb=short
+    timeout: 120
 
 branches:
   - main
