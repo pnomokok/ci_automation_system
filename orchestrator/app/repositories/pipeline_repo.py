@@ -82,7 +82,7 @@ class PipelineRepository:
             select(Pipeline).where(
                 Pipeline.repo_url == repo_url,
                 Pipeline.branch == branch,
-                Pipeline.status.in_([PipelineStatus.QUEUED, PipelineStatus.RUNNING]),
+                Pipeline.status == PipelineStatus.RUNNING,
             )
         )
         return result.scalar_one_or_none()

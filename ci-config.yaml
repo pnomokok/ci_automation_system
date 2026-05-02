@@ -9,7 +9,7 @@ steps:
     command: echo "No build step"
     timeout: 60
   test:
-    command: apt-get update -qq && apt-get install -y -qq git nodejs > /dev/null 2>&1 && cd orchestrator && ../.venv-orchestrator/bin/pytest tests/ -v --tb=short && cd ../repo-manager && ../.venv-repomanager/bin/pytest tests/ -v --tb=short && cd ../dashboard && node ./node_modules/.bin/vitest run
+    command: apt-get update -qq && apt-get install -y -qq git nodejs > /dev/null 2>&1 && result=0; cd orchestrator && ../.venv-orchestrator/bin/pytest tests/ -v --tb=short || result=1; cd ../repo-manager && ../.venv-repomanager/bin/pytest tests/ -v --tb=short || result=1; cd ../dashboard && node ./node_modules/.bin/vitest run || result=1; exit $result
     timeout: 360
 
 branches:
