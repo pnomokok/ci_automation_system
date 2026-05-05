@@ -9,7 +9,7 @@ class LogCollector:
         self.step_id = step_id
         self.batch_size = 50
         self.logs_buffer = []
-        self._lock = threading.Lock()
+        self._lock = threading.RLock()
         self._stop_event = threading.Event()
         self._worker_thread = None
 
