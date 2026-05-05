@@ -3,6 +3,7 @@ import { useAuth } from './context/AuthContext';
 import LoginPage from './pages/LoginPage';
 import PipelineListPage from './components/PipelineListPage';
 import PipelineDetailPage from './components/PipelineDetailPage';
+import RepositoriesPage from './components/RepositoriesPage';
 
 function ProtectedRoute({ children }) {
   const { isAuthenticated } = useAuth();
@@ -32,6 +33,12 @@ function Navbar() {
         className="text-sm text-gray-400 hover:text-gray-100 transition-colors"
       >
         Pipelines
+      </Link>
+      <Link
+        to="/repositories"
+        className="text-sm text-gray-400 hover:text-gray-100 transition-colors"
+      >
+        Repositories
       </Link>
 
       <div className="flex items-center gap-3 ml-4 border-l border-dark-600 pl-4">
@@ -76,6 +83,14 @@ export default function App() {
           element={
             <ProtectedRoute>
               <Layout><PipelineDetailPage /></Layout>
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="/repositories"
+          element={
+            <ProtectedRoute>
+              <Layout><RepositoriesPage /></Layout>
             </ProtectedRoute>
           }
         />
