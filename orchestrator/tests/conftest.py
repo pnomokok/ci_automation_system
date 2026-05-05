@@ -2,11 +2,20 @@ import pytest
 import pytest_asyncio
 from httpx import AsyncClient, ASGITransport
 from sqlalchemy.ext.asyncio import create_async_engine, async_sessionmaker
-from unittest.mock import AsyncMock
+from unittest.mock import AsyncMock, patch
 
 from app.models import Base
 
 TEST_DB = "sqlite+aiosqlite:///:memory:"
+
+
+@pytest.fixture(autouse=True)
+def mock_github_validation():
+    with patch(
+        "app.services.repository_service._assert_public_github_repo",
+        new=AsyncMock(return_value=None),
+    ):
+        yield
 
 
 @pytest_asyncio.fixture
