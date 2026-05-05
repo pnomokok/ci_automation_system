@@ -137,16 +137,17 @@ class PipelineService:
         )
 
         total, passed, failed, skipped = 0, 0, 0, 0
+        _ansi = re.compile(r"\x1b\[[0-9;]*m")
 
         for log, _ in rows:
-            content = log.content
+            content = _ansi.sub("", log.content)  # strip ANSI color codes
 
             # Skip "Test Files  N passed (N)" — totals are captured in "Tests" line
-            if re.match(r"\s*Test Files\s+", content):
+            if "Test Files" in content:
                 continue
 
             # Vitest summary: "      Tests  N failed | N passed (N)"
-            if re.match(r"\s*Tests\s+", content):
+            if re.search(r"\bTests\b", content) and ("passed" in content or "failed" in content):
                 passed_m  = re.search(r"(\d+) passed",  content)
                 failed_m  = re.search(r"(\d+) failed",  content)
                 skipped_m = re.search(r"(\d+) skipped", content)
