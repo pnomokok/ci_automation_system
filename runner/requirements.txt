@@ -2,3 +2,4 @@ docker
 redis
 requests
 PyYAML
+pytest==8.3.5
