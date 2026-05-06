@@ -137,13 +137,13 @@ class PipelineService:
         )
 
         total, passed, failed, skipped = 0, 0, 0, 0
-        _ansi = re.compile(r"\x1b\[[0-9;]*m")
+        _ansi = re.compile(r"\x1b\[[0-9;?]*[A-Za-z]")  # all CSI sequences
 
         for log, _ in rows:
-            content = _ansi.sub("", log.content)  # strip ANSI color codes
+            content = _ansi.sub("", log.content).replace("\r", "")
 
-            # Skip "Test Files  N passed (N)" — totals are captured in "Tests" line
-            if "Test Files" in content:
+            # Skip vitest "Test Files  N passed (N)" — totals captured in "Tests" line
+            if re.search(r"test files", content, re.IGNORECASE):
                 continue
 
             # Vitest summary: "      Tests  N failed | N passed (N)"
