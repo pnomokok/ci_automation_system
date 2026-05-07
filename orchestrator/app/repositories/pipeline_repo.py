@@ -1,10 +1,11 @@
 from datetime import datetime, timezone
 
-from sqlalchemy import select, func, update
+from sqlalchemy import select, func, update, or_
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
 
 from app.models.pipeline import Pipeline, PipelineStatus
+from app.models.team import TeamMember
 
 
 class PipelineRepository:
@@ -31,12 +32,21 @@ class PipelineRepository:
         page_size: int = 20,
         status: str | None = None,
         repo_id: str | None = None,
+        user_id: str | None = None,
     ) -> tuple[list[Pipeline], int]:
         query = select(Pipeline)
         if status:
             query = query.where(Pipeline.status == status)
         if repo_id:
             query = query.where(Pipeline.repo_id == repo_id)
+        if user_id:
+            user_teams = select(TeamMember.team_id).where(TeamMember.user_id == user_id)
+            query = query.where(
+                or_(
+                    Pipeline.team_id.is_(None),
+                    Pipeline.team_id.in_(user_teams),
+                )
+            )
 
         total_result = await session.execute(select(func.count()).select_from(query.subquery()))
         total = total_result.scalar_one()
@@ -82,7 +92,7 @@ class PipelineRepository:
             select(Pipeline).where(
                 Pipeline.repo_url == repo_url,
                 Pipeline.branch == branch,
-                Pipeline.status == PipelineStatus.RUNNING,
+                Pipeline.status.in_([PipelineStatus.QUEUED, PipelineStatus.RUNNING]),
             )
         )
         return result.scalar_one_or_none()

@@ -139,13 +139,13 @@ class StepExecutor:
             if stop_occurred[0]:
                 logger.info(f"Step {step} stopped by user request.")
                 self.api_client.update_step_status(step_id, "FAILED")
-                return None  # Pipeline STOPPED
+                return None  # Pipeline → STOPPED
 
-            # Handle TIMEOUT separately
+            # Handle TIMEOUT: step fails, pipeline → FAILED (not STOPPED)
             if timeout_occurred[0]:
                 logger.error(f"Step {step} marked as FAILED due to timeout.")
                 self.api_client.update_step_status(step_id, "FAILED")
-                return None  # Pipeline STOPPED
+                return False  # Pipeline → FAILED
 
             # Handle exit codes
             if exit_code != 0:

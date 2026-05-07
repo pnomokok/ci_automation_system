@@ -29,7 +29,7 @@ async def list_pipelines(
     session: AsyncSession = Depends(get_db),
     _: User = Depends(get_current_user),
 ):
-    items, total = await _service.list(session, page, page_size, status, repo_id)
+    items, total = await _service.list(session, page, page_size, status, repo_id, user=_)
     return PaginatedResponse[PipelineListItem](
         items=[PipelineListItem.model_validate(p) for p in items],
         total=total,
@@ -43,9 +43,9 @@ async def create_pipeline(
     body: PipelineCreate,
     session: AsyncSession = Depends(get_db),
     redis: Redis = Depends(get_redis),
-    _: User = Depends(get_current_user),
+    current_user: User = Depends(get_current_user),
 ):
-    pipeline = await _service.create(session, redis, body)
+    pipeline = await _service.create(session, redis, body, user=current_user)
     return PipelineCreateResponse.model_validate(pipeline)
 
 
@@ -53,9 +53,9 @@ async def create_pipeline(
 async def get_pipeline(
     pipeline_id: str,
     session: AsyncSession = Depends(get_db),
-    _: User = Depends(get_current_user),
+    current_user: User = Depends(get_current_user),
 ):
-    pipeline = await _service.get(session, pipeline_id)
+    pipeline = await _service.get(session, pipeline_id, user=current_user)
     return PipelineDetailResponse.model_validate(pipeline)
 
 
@@ -64,9 +64,9 @@ async def stop_pipeline(
     pipeline_id: str,
     session: AsyncSession = Depends(get_db),
     redis: Redis = Depends(get_redis),
-    _: User = Depends(get_current_user),
+    current_user: User = Depends(get_current_user),
 ):
-    pipeline = await _service.stop(session, redis, pipeline_id)
+    pipeline = await _service.stop(session, redis, pipeline_id, user=current_user)
     return {"pipeline_id": pipeline.id, "status": pipeline.status}
 
 
@@ -78,9 +78,9 @@ async def get_logs(
     page: int = Query(1, ge=1),
     page_size: int = Query(100, ge=1, le=500),
     session: AsyncSession = Depends(get_db),
-    _: User = Depends(get_current_user),
+    current_user: User = Depends(get_current_user),
 ):
-    rows, total = await _service.get_logs(session, pipeline_id, step_name, stream, page, page_size)
+    rows, total = await _service.get_logs(session, pipeline_id, step_name, stream, page, page_size, user=current_user)
     items = [
         LogLineResponse(
             step_id=log.step_id,
@@ -99,6 +99,6 @@ async def get_logs(
 async def get_report(
     pipeline_id: str,
     session: AsyncSession = Depends(get_db),
-    _: User = Depends(get_current_user),
+    current_user: User = Depends(get_current_user),
 ):
-    return await _service.get_report(session, pipeline_id)
+    return await _service.get_report(session, pipeline_id, user=current_user)

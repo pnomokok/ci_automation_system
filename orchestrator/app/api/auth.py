@@ -5,7 +5,7 @@ from app.core.deps import get_db
 from app.core.security import verify_password, create_access_token, decode_token, hash_password
 from app.core.config import settings
 from app.repositories.user_repo import UserRepository
-from app.schemas.auth import LoginRequest, TokenResponse, TokenRefreshRequest
+from app.schemas.auth import LoginRequest, TokenResponse, TokenRefreshRequest, RegisterRequest, RegisterResponse
 
 router = APIRouter(prefix="/auth", tags=["auth"])
 _user_repo = UserRepository()
@@ -24,6 +24,19 @@ async def login(body: LoginRequest, session: AsyncSession = Depends(get_db)):
         access_token=token,
         expires_in=settings.jwt_expire_minutes * 60,
     )
+
+
+@router.post("/register", response_model=RegisterResponse, status_code=201)
+async def register(body: RegisterRequest, session: AsyncSession = Depends(get_db)):
+    existing = await _user_repo.get_by_username(session, body.username)
+    if existing:
+        raise HTTPException(
+            status_code=status.HTTP_409_CONFLICT,
+            detail={"code": "USERNAME_TAKEN", "message": "Bu kullanıcı adı zaten alınmış"},
+        )
+    user = await _user_repo.create(session, body.username, hash_password(body.password))
+    await session.commit()
+    return RegisterResponse(id=str(user.id), username=user.username)
 
 
 @router.post("/refresh", response_model=TokenResponse)

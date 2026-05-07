@@ -113,3 +113,30 @@ async def test_refresh_success(app_client, db_session):
 async def test_refresh_invalid_token(app_client):
     resp = await app_client.post("/api/v1/auth/refresh", json={"refresh_token": "gecersiz.token.burada"})
     assert resp.status_code == 401
+
+
+# ── Register endpoint testleri ────────────────────────────────────────────────
+
+@pytest.mark.asyncio
+async def test_register_creates_user(app_client):
+    resp = await app_client.post("/api/v1/auth/register", json={"username": "yeni_user", "password": "guclu_sifre"})
+    assert resp.status_code == 201
+    body = resp.json()
+    assert body["username"] == "yeni_user"
+    assert "id" in body
+
+
+@pytest.mark.asyncio
+async def test_register_duplicate_username_rejected(app_client):
+    await app_client.post("/api/v1/auth/register", json={"username": "tekrar", "password": "sifre1"})
+    resp = await app_client.post("/api/v1/auth/register", json={"username": "tekrar", "password": "sifre2"})
+    assert resp.status_code == 409
+    assert resp.json()["detail"]["code"] == "USERNAME_TAKEN"
+
+
+@pytest.mark.asyncio
+async def test_register_then_login(app_client):
+    await app_client.post("/api/v1/auth/register", json={"username": "fullflow", "password": "pass123"})
+    resp = await app_client.post("/api/v1/auth/login", json={"username": "fullflow", "password": "pass123"})
+    assert resp.status_code == 200
+    assert "access_token" in resp.json()

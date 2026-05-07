@@ -8,6 +8,7 @@ from app.api.internal.pipelines import router as internal_pipelines_router
 from app.api.internal.steps import router as internal_steps_router
 from app.api.pipelines import router as pipelines_router
 from app.api.repositories import router as repositories_router
+from app.api.teams import router as teams_router
 from app.core.redis import close_redis, get_redis
 
 
@@ -36,6 +37,7 @@ app.add_middleware(
 app.include_router(auth_router,         prefix="/api/v1")
 app.include_router(pipelines_router,    prefix="/api/v1")
 app.include_router(repositories_router, prefix="/api/v1")
+app.include_router(teams_router,        prefix="/api/v1")
 
 # Internal endpoint'ler — JWT yok, yalnızca Docker ağı içinden erişilir
 app.include_router(internal_steps_router,     prefix="/api/v1/internal")

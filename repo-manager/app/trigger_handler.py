@@ -19,6 +19,7 @@ def build_pipeline_request(data: dict[str, Any]) -> dict[str, Any]:
         "commit_author": data["commit_author"],
         "trigger_type": data.get("trigger_type", "webhook"),
         "workspace": data.get("workspace"),
+        "team_id": data.get("team_id"),
     }
 
 

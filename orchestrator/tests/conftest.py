@@ -44,6 +44,7 @@ async def app_client(db_session, mock_redis):
     from app.api.auth import router as auth_router
     from app.api.pipelines import router as pipeline_router
     from app.api.repositories import router as repositories_router
+    from app.api.teams import router as teams_router
     from app.api.internal.steps import router as internal_steps_router
     from app.api.internal.pipelines import router as internal_pipelines_router
     from app.core.deps import get_db, get_current_user
@@ -56,6 +57,7 @@ async def app_client(db_session, mock_redis):
     app.include_router(auth_router, prefix="/api/v1")
     app.include_router(pipeline_router, prefix="/api/v1")
     app.include_router(repositories_router, prefix="/api/v1")
+    app.include_router(teams_router, prefix="/api/v1")
     app.include_router(internal_steps_router, prefix="/api/v1/internal")
     app.include_router(internal_pipelines_router, prefix="/api/v1/internal")
 

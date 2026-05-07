@@ -25,6 +25,7 @@ class Pipeline(Base):
     __tablename__ = "pipelines"
 
     id: Mapped[str] = mapped_column(String(36), primary_key=True, default=lambda: str(uuid.uuid4()))
+    team_id: Mapped[str | None] = mapped_column(String(36), ForeignKey("teams.id", ondelete="SET NULL"), nullable=True)
     repo_id: Mapped[str | None] = mapped_column(String(36), ForeignKey("repositories.id"), nullable=True)
     repo_url: Mapped[str] = mapped_column(String(512), nullable=False)
     branch: Mapped[str] = mapped_column(String(255), nullable=False)
@@ -38,5 +39,6 @@ class Pipeline(Base):
     duration_sec: Mapped[int | None] = mapped_column(Integer, nullable=True)
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=lambda: datetime.now(timezone.utc))
 
+    team: Mapped["Team | None"] = relationship("Team", back_populates="pipelines")
     repository: Mapped["Repository | None"] = relationship("Repository", back_populates="pipelines")
     steps: Mapped[list["Step"]] = relationship("Step", back_populates="pipeline", order_by="Step.order")

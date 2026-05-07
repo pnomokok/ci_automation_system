@@ -1,20 +1,13 @@
 import axios from 'axios';
 
 const BASE_URL = import.meta.env.VITE_API_URL || '';
+const REPO_MANAGER_URL = import.meta.env.VITE_REPO_MANAGER_URL || '';
 
 const api = axios.create({
   baseURL: `${BASE_URL}/api/v1`,
   headers: { 'Content-Type': 'application/json' },
   timeout: 15000,
 });
-
-let isRefreshing = false;
-let failedQueue = [];
-
-const processQueue = (error, token = null) => {
-  failedQueue.forEach((prom) => (error ? prom.reject(error) : prom.resolve(token)));
-  failedQueue = [];
-};
 
 // Attach JWT token to every request
 api.interceptors.request.use(
@@ -26,45 +19,15 @@ api.interceptors.request.use(
   (error) => Promise.reject(error)
 );
 
-// Auto-refresh on 401
+// Token süresi dolunca login'e yönlendir
 api.interceptors.response.use(
   (response) => response,
-  async (error) => {
-    const original = error.config;
-    if (error.response?.status !== 401 || original._retry) {
-      return Promise.reject(error);
-    }
-
-    if (isRefreshing) {
-      return new Promise((resolve, reject) => {
-        failedQueue.push({ resolve, reject });
-      }).then((token) => {
-        original.headers.Authorization = `Bearer ${token}`;
-        return api(original);
-      });
-    }
-
-    original._retry = true;
-    isRefreshing = true;
-
-    try {
-      const res = await axios.post(
-        `${BASE_URL}/api/v1/auth/refresh`,
-        { refresh_token: localStorage.getItem('access_token') },
-      );
-      const newToken = res.data.access_token;
-      localStorage.setItem('access_token', newToken);
-      processQueue(null, newToken);
-      original.headers.Authorization = `Bearer ${newToken}`;
-      return api(original);
-    } catch (err) {
-      processQueue(err, null);
+  (error) => {
+    if (error.response?.status === 401) {
       localStorage.removeItem('access_token');
       window.location.href = '/login';
-      return Promise.reject(err);
-    } finally {
-      isRefreshing = false;
     }
+    return Promise.reject(error);
   }
 );
 
@@ -72,8 +35,8 @@ api.interceptors.response.use(
 export const loginUser = (username, password) =>
   api.post('/auth/login', { username, password });
 
-export const refreshToken = () =>
-  api.post('/auth/refresh');
+export const registerUser = (username, password) =>
+  api.post('/auth/register', { username, password });
 
 // ── Pipelines ────────────────────────────────────
 export const getPipelines = (params = {}) =>
@@ -85,11 +48,16 @@ export const getPipeline = (id) =>
 export const createPipeline = (repoUrl, branch) =>
   api.post('/pipelines', { repo_url: repoUrl, branch });
 
-export const triggerPipeline = (repoUrl, branch) =>
-  axios.post('/trigger', { repo_url: repoUrl, branch }, {
-    headers: { 'Content-Type': 'application/json' },
+export const triggerPipeline = (repoUrl, branch) => {
+  const triggerToken = import.meta.env.VITE_TRIGGER_API_KEY || '';
+  return axios.post(`${REPO_MANAGER_URL}/trigger`, { repo_url: repoUrl, branch }, {
+    headers: {
+      'Content-Type': 'application/json',
+      ...(triggerToken && { 'X-Trigger-Token': triggerToken }),
+    },
     timeout: 120000,
   });
+};
 
 export const stopPipeline = (id) =>
   api.post(`/pipelines/${id}/stop`);
@@ -99,6 +67,22 @@ export const getPipelineLogs = (id, params = {}) =>
 
 export const getPipelineReport = (id) =>
   api.get(`/pipelines/${id}/report`);
+
+// ── Teams ─────────────────────────────────────────
+export const getTeams = () =>
+  api.get('/teams');
+
+export const createTeam = (name) =>
+  api.post('/teams', { name });
+
+export const getTeamMembers = (teamId) =>
+  api.get(`/teams/${teamId}/members`);
+
+export const addTeamMember = (teamId, username) =>
+  api.post(`/teams/${teamId}/members`, { username });
+
+export const removeTeamMember = (teamId, userId) =>
+  api.delete(`/teams/${teamId}/members/${userId}`);
 
 // ── Repositories ─────────────────────────────────
 export const getRepositories = (params = {}) =>
