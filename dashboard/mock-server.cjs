@@ -87,6 +87,39 @@ const steps = {
   ],
 };
 
+let repositories = [
+  {
+    id: 'repo-001',
+    url: 'https://github.com/pnomokok/ci_automation_system',
+    default_branch: 'main',
+    created_at: '2026-04-20T10:00:00Z',
+    owner_type: 'team',
+    owner_id: 'team-001',
+  },
+  {
+    id: 'repo-002',
+    url: 'https://github.com/pnomokok/personal-project',
+    default_branch: 'main',
+    created_at: '2026-04-25T10:00:00Z',
+    owner_type: 'user',
+    owner_id: 'user-001',
+  },
+];
+
+let teams = [
+  { id: 'team-001', name: 'CI Ekibi',      created_at: '2026-04-20T10:00:00Z' },
+  { id: 'team-002', name: 'Backend Ekibi', created_at: '2026-04-21T10:00:00Z' },
+];
+
+let teamMembers = {
+  'team-001': [
+    { user_id: 'user-001', username: 'admin', joined_at: '2026-04-20T10:00:00Z' },
+  ],
+  'team-002': [
+    { user_id: 'user-001', username: 'admin', joined_at: '2026-04-21T10:00:00Z' },
+  ],
+};
+
 const LOGS = {
   install: [
     'Collecting dependencies from requirements.txt...',
@@ -123,13 +156,11 @@ const LOGS = {
 };
 
 function buildLogs(pipelineId, stepName) {
-  const pipeline = pipelines.find(p => p.id === pipelineId);
-  const pSteps   = steps[pipelineId] || [];
-  const step     = pSteps.find(s => s.name === stepName);
+  const pSteps = steps[pipelineId] || [];
+  const step   = pSteps.find(s => s.name === stepName);
   if (!step) return [];
 
   const lines = LOGS[stepName] || ['No logs.'];
-  // For FAILED build, inject an error
   if (pipelineId === 'pl-002' && stepName === 'build') {
     return [
       { step_id: step.id, step_name: stepName, line_number: 1, stream: 'stdout', timestamp: new Date().toISOString(), content: 'Running build checks...' },
@@ -182,37 +213,53 @@ const server = http.createServer(async (req, res) => {
     return json(res, 200, { access_token: fakeJwt('admin'), token_type: 'bearer', expires_in: 3600 });
   }
 
+  if (path === '/api/v1/auth/register' && method === 'POST') {
+    const body = await readBody(req);
+    if (!body.username || !body.password) {
+      return json(res, 400, { error: { code: 'INVALID_INPUT', message: 'Kullanıcı adı ve şifre zorunludur.' } });
+    }
+    if (body.username === 'admin') {
+      return json(res, 409, { error: { code: 'USERNAME_TAKEN', message: 'Bu kullanıcı adı zaten kullanımda.' } });
+    }
+    return json(res, 201, { id: `user-${Date.now()}`, username: body.username, created_at: new Date().toISOString() });
+  }
+
   // ── Pipelines listesi ───────────────────────────────────────
   if (path === '/api/v1/pipelines' && method === 'GET') {
     const statusFilter = url.searchParams.get('status');
+    const repoFilter   = url.searchParams.get('repo_id');
     const page         = parseInt(url.searchParams.get('page') || '1');
     const pageSize     = parseInt(url.searchParams.get('page_size') || '20');
-    let items = statusFilter ? pipelines.filter(p => p.status === statusFilter) : pipelines;
+    let items = pipelines;
+    if (statusFilter) items = items.filter(p => p.status === statusFilter);
+    if (repoFilter)   items = items.filter(p => p.repo_id === repoFilter);
     const total = items.length;
     items = items.slice((page - 1) * pageSize, page * pageSize);
     return json(res, 200, { items, total, page, page_size: pageSize });
   }
 
-  // ── Pipeline oluştur (manuel tetikleme) ─────────────────────
+  // ── Pipeline oluştur ────────────────────────────────────────
   if (path === '/api/v1/pipelines' && method === 'POST') {
     const body = await readBody(req);
-    if (!body.repo_url || !body.branch) {
-      return json(res, 400, { error: { code: 'INVALID_INPUT', message: 'repo_url ve branch zorunludur.' } });
+    if (!body.repo_url) {
+      return json(res, 400, { error: { code: 'INVALID_INPUT', message: 'repo_url zorunludur.' } });
     }
+    const matchedRepo = repositories.find(r => r.url === body.repo_url);
     const newPipeline = {
-      id: `pl-${Date.now()}`, repo_id: 'repo-001',
-      repo_url: body.repo_url, branch: body.branch,
+      id: `pl-${Date.now()}`, repo_id: matchedRepo?.id || 'repo-001',
+      repo_url: body.repo_url, branch: body.branch || 'main',
       commit_hash: null, commit_msg: null, commit_author: null,
       trigger_type: 'manual', status: 'QUEUED',
       started_at: null, finished_at: null, duration_sec: null,
     };
     pipelines.unshift(newPipeline);
+    const ts = Date.now();
     steps[newPipeline.id] = [
-      { id: `st-${Date.now()}-1`, name: 'install', order: 1, status: 'PENDING', started_at: null, finished_at: null, duration_sec: null, exit_code: null },
-      { id: `st-${Date.now()}-2`, name: 'build',   order: 2, status: 'PENDING', started_at: null, finished_at: null, duration_sec: null, exit_code: null },
-      { id: `st-${Date.now()}-3`, name: 'test',    order: 3, status: 'PENDING', started_at: null, finished_at: null, duration_sec: null, exit_code: null },
+      { id: `st-${ts}-1`, name: 'install', order: 1, status: 'PENDING', started_at: null, finished_at: null, duration_sec: null, exit_code: null },
+      { id: `st-${ts}-2`, name: 'build',   order: 2, status: 'PENDING', started_at: null, finished_at: null, duration_sec: null, exit_code: null },
+      { id: `st-${ts}-3`, name: 'test',    order: 3, status: 'PENDING', started_at: null, finished_at: null, duration_sec: null, exit_code: null },
     ];
-    return json(res, 201, { id: newPipeline.id, status: 'QUEUED', trigger_type: 'manual', branch: body.branch, created_at: new Date().toISOString() });
+    return json(res, 201, { id: newPipeline.id, status: 'QUEUED', trigger_type: 'manual', branch: newPipeline.branch, created_at: new Date().toISOString() });
   }
 
   // ── Pipeline detay ──────────────────────────────────────────
@@ -264,10 +311,92 @@ const server = http.createServer(async (req, res) => {
 
   // ── Repositories ────────────────────────────────────────────
   if (path === '/api/v1/repositories' && method === 'GET') {
-    return json(res, 200, {
-      items: [{ id: 'repo-001', url: 'https://github.com/pnomokok/ci_automation_system', default_branch: 'main', created_at: '2026-04-20T10:00:00Z' }],
-      total: 1,
-    });
+    return json(res, 200, { items: repositories, total: repositories.length });
+  }
+
+  if (path === '/api/v1/repositories' && method === 'POST') {
+    const body = await readBody(req);
+    if (!body.owner_type || !body.owner_id) {
+      return json(res, 400, { error: { code: 'INVALID_INPUT', message: 'owner_type ve owner_id zorunludur.' } });
+    }
+    const newRepo = {
+      id: `repo-${Date.now()}`,
+      url: body.url,
+      default_branch: body.default_branch || 'main',
+      created_at: new Date().toISOString(),
+      owner_type: body.owner_type,
+      owner_id: body.owner_id,
+    };
+    repositories.push(newRepo);
+    return json(res, 201, newRepo);
+  }
+
+  const repoDeleteMatch = path.match(/^\/api\/v1\/repositories\/([^/]+)$/);
+  if (repoDeleteMatch && method === 'DELETE') {
+    const id = repoDeleteMatch[1];
+    repositories = repositories.filter(r => r.id !== id);
+    res.writeHead(204, { 'Access-Control-Allow-Origin': '*' });
+    return res.end();
+  }
+
+  // ── Teams ────────────────────────────────────────────────────
+  if (path === '/api/v1/teams' && method === 'GET') {
+    return json(res, 200, teams);
+  }
+
+  if (path === '/api/v1/teams' && method === 'POST') {
+    const body = await readBody(req);
+    if (!body.name) {
+      return json(res, 400, { error: { code: 'INVALID_INPUT', message: 'Takım adı zorunludur.' } });
+    }
+    if (teams.find(t => t.name === body.name)) {
+      return json(res, 409, { detail: { code: 'TEAM_NAME_TAKEN', message: 'Bu takım adı zaten kullanılıyor.' } });
+    }
+    const newTeam = { id: `team-${Date.now()}`, name: body.name, created_at: new Date().toISOString() };
+    teams.push(newTeam);
+    teamMembers[newTeam.id] = [{ user_id: 'user-001', username: 'admin', joined_at: new Date().toISOString() }];
+    return json(res, 201, newTeam);
+  }
+
+  const teamDetailMatch = path.match(/^\/api\/v1\/teams\/([^/]+)$/);
+  if (teamDetailMatch && method === 'GET') {
+    const id   = teamDetailMatch[1];
+    const team = teams.find(t => t.id === id);
+    if (!team) return json(res, 404, { error: { code: 'NOT_FOUND', message: 'Takım bulunamadı.' } });
+    const members = teamMembers[id] || [];
+    const repoCount = repositories.filter(r => r.owner_type === 'team' && r.owner_id === id).length;
+    return json(res, 200, { ...team, members, repository_count: repoCount });
+  }
+
+  const teamMembersMatch = path.match(/^\/api\/v1\/teams\/([^/]+)\/members$/);
+  if (teamMembersMatch && method === 'GET') {
+    const id = teamMembersMatch[1];
+    return json(res, 200, teamMembers[id] || []);
+  }
+
+  if (teamMembersMatch && method === 'POST') {
+    const id   = teamMembersMatch[1];
+    const body = await readBody(req);
+    if (!body.username) {
+      return json(res, 400, { error: { code: 'INVALID_INPUT', message: 'username zorunludur.' } });
+    }
+    if (!teamMembers[id]) teamMembers[id] = [];
+    if (teamMembers[id].find(m => m.username === body.username)) {
+      return json(res, 409, { detail: { code: 'ALREADY_MEMBER', message: 'Kullanıcı zaten bu takımda.' } });
+    }
+    const newMember = { user_id: `user-${Date.now()}`, username: body.username, joined_at: new Date().toISOString() };
+    teamMembers[id].push(newMember);
+    return json(res, 201, newMember);
+  }
+
+  const teamMemberDeleteMatch = path.match(/^\/api\/v1\/teams\/([^/]+)\/members\/([^/]+)$/);
+  if (teamMemberDeleteMatch && method === 'DELETE') {
+    const [, teamId, userId] = teamMemberDeleteMatch;
+    if (teamMembers[teamId]) {
+      teamMembers[teamId] = teamMembers[teamId].filter(m => m.user_id !== userId);
+    }
+    res.writeHead(204, { 'Access-Control-Allow-Origin': '*' });
+    return res.end();
   }
 
   // 404

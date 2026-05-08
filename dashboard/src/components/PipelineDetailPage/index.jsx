@@ -33,7 +33,9 @@ function StepRow({ step }) {
 }
 
 export default function PipelineDetailPage() {
-  const { id } = useParams();
+  const { repoId, id } = useParams();
+  const backTo = repoId ? `/repositories/${repoId}` : '/repositories';
+
   const [pipeline, setPipeline] = useState(null);
   const [report, setReport] = useState(null);
   const [loading, setLoading] = useState(true);
@@ -46,7 +48,6 @@ export default function PipelineDetailPage() {
       const res = await getPipeline(id);
       setPipeline(res.data);
       setError('');
-      // Fetch report once done
       if (res.data.status === 'SUCCESS' || res.data.status === 'FAILED') {
         try {
           const rep = await getPipelineReport(id);
@@ -60,11 +61,8 @@ export default function PipelineDetailPage() {
     }
   }, [id]);
 
-  useEffect(() => {
-    fetchPipeline();
-  }, [fetchPipeline]);
+  useEffect(() => { fetchPipeline(); }, [fetchPipeline]);
 
-  // 5s polling while RUNNING
   useEffect(() => {
     if (pollRef.current) clearInterval(pollRef.current);
     if (pipeline?.status === 'RUNNING') {
@@ -98,16 +96,31 @@ export default function PipelineDetailPage() {
     return (
       <div className="bg-red-950 border border-red-800 text-red-300 rounded-lg px-5 py-4 text-sm">
         {error}
-        <Link to="/pipelines" className="ml-3 underline hover:no-underline">← Listeye dön</Link>
+        <Link to={backTo} className="ml-3 underline hover:no-underline">← Geri dön</Link>
       </div>
     );
   }
 
   return (
     <div className="space-y-5">
+      {/* Breadcrumb */}
+      <nav className="flex items-center gap-2 text-xs text-gray-500">
+        <Link to="/repositories" className="hover:text-gray-300 transition-colors">Repositories</Link>
+        {repoId && (
+          <>
+            <span>›</span>
+            <Link to={`/repositories/${repoId}`} className="hover:text-gray-300 transition-colors font-mono">
+              {repoId.slice(0, 8)}…
+            </Link>
+          </>
+        )}
+        <span>›</span>
+        <span className="text-gray-400 font-mono">Pipeline {id?.slice(0, 8)}…</span>
+      </nav>
+
       {/* Header */}
       <div className="flex items-center gap-3">
-        <Link to="/pipelines" className="text-gray-500 hover:text-gray-200 text-sm transition-colors">
+        <Link to={backTo} className="text-gray-500 hover:text-gray-200 text-sm transition-colors">
           ← Geri
         </Link>
         <div className="flex items-center gap-3">
@@ -136,7 +149,6 @@ export default function PipelineDetailPage() {
 
       {pipeline && (
         <>
-          {/* Metadata */}
           <div className="bg-dark-900 border border-dark-600 rounded-lg px-4 py-1">
             <MetaRow label="Repository">{pipeline.repo_url || '—'}</MetaRow>
             <MetaRow label="Branch">{pipeline.branch || '—'}</MetaRow>
@@ -154,7 +166,6 @@ export default function PipelineDetailPage() {
             <MetaRow label="Süre">{formatDuration(pipeline.duration_sec)}</MetaRow>
           </div>
 
-          {/* Steps */}
           {pipeline.steps?.length > 0 && (
             <div>
               <h2 className="text-sm font-semibold text-gray-400 uppercase tracking-wider mb-2">Adımlar</h2>
@@ -164,7 +175,6 @@ export default function PipelineDetailPage() {
             </div>
           )}
 
-          {/* Test report */}
           {report && (
             <div>
               <h2 className="text-sm font-semibold text-gray-400 uppercase tracking-wider mb-2">Test Raporu</h2>
@@ -189,7 +199,6 @@ export default function PipelineDetailPage() {
             </div>
           )}
 
-          {/* Logs */}
           <div>
             <h2 className="text-sm font-semibold text-gray-400 uppercase tracking-wider mb-2">Loglar</h2>
             <LogViewer pipelineId={id} />

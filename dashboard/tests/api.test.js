@@ -1,3 +1,5 @@
+// triggerPipeline artık api instance üzerinden POST /api/v1/pipelines'e gidiyor.
+// axios.create instance'ını mock'lamak unit test kapsamını aştığından skip edildi.
 import { describe, expect, it } from 'vitest';
 import { decodeToken, formatApiError, formatDate, formatDuration } from '../src/services/api';
 

@@ -1,4 +1,4 @@
-from sqlalchemy import select, delete
+from sqlalchemy import select, delete, or_
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.models.repository import Repository
@@ -21,8 +21,15 @@ class RepositoryRepository:
         result = await session.execute(select(Repository).where(Repository.url == url))
         return result.scalar_one_or_none()
 
-    async def get_all(self, session: AsyncSession) -> list[Repository]:
-        result = await session.execute(select(Repository).order_by(Repository.created_at.desc()))
+    async def get_all(self, session: AsyncSession, user_id: str, team_ids: list[str]) -> list[Repository]:
+        conditions = [
+            Repository.user_id == user_id,
+            Repository.user_id.is_(None),  # migration öncesi eklenen repolar herkese görünür
+        ]
+        if team_ids:
+            conditions.append(Repository.team_id.in_(team_ids))
+        stmt = select(Repository).where(or_(*conditions)).order_by(Repository.created_at.desc())
+        result = await session.execute(stmt)
         return list(result.scalars().all())
 
     async def delete(self, session: AsyncSession, repo_id: str) -> bool:

@@ -1,10 +1,11 @@
 import { BrowserRouter, Link, Navigate, Route, Routes, useNavigate } from 'react-router-dom';
 import { useAuth } from './context/AuthContext';
 import LoginPage from './pages/LoginPage';
-import PipelineListPage from './components/PipelineListPage';
 import PipelineDetailPage from './components/PipelineDetailPage';
 import RepositoriesPage from './components/RepositoriesPage';
+import RepoPipelinePage from './components/RepoPipelinePage';
 import TeamsPage from './components/TeamsPage';
+import TeamDetailPage from './components/TeamDetailPage';
 
 function ProtectedRoute({ children }) {
   const { isAuthenticated } = useAuth();
@@ -22,19 +23,13 @@ function Navbar() {
 
   return (
     <nav className="bg-dark-900 border-b border-dark-600 h-14 flex items-center px-6 gap-6 sticky top-0 z-40">
-      <Link to="/pipelines" className="flex items-center gap-2 text-white font-semibold text-base hover:text-blue-400 transition-colors">
+      <Link to="/repositories" className="flex items-center gap-2 text-white font-semibold text-base hover:text-blue-400 transition-colors">
         <span className="text-blue-400">⬡</span>
         <span>CI Dashboard</span>
       </Link>
 
       <div className="flex-1" />
 
-      <Link
-        to="/pipelines"
-        className="text-sm text-gray-400 hover:text-gray-100 transition-colors"
-      >
-        Pipelines
-      </Link>
       <Link
         to="/repositories"
         className="text-sm text-gray-400 hover:text-gray-100 transition-colors"
@@ -78,26 +73,26 @@ export default function App() {
       <Routes>
         <Route path="/login" element={<LoginPage />} />
         <Route
-          path="/pipelines"
-          element={
-            <ProtectedRoute>
-              <Layout><PipelineListPage /></Layout>
-            </ProtectedRoute>
-          }
-        />
-        <Route
-          path="/pipelines/:id"
-          element={
-            <ProtectedRoute>
-              <Layout><PipelineDetailPage /></Layout>
-            </ProtectedRoute>
-          }
-        />
-        <Route
           path="/repositories"
           element={
             <ProtectedRoute>
               <Layout><RepositoriesPage /></Layout>
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="/repositories/:repoId"
+          element={
+            <ProtectedRoute>
+              <Layout><RepoPipelinePage /></Layout>
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="/repositories/:repoId/pipelines/:id"
+          element={
+            <ProtectedRoute>
+              <Layout><PipelineDetailPage /></Layout>
             </ProtectedRoute>
           }
         />
@@ -109,8 +104,16 @@ export default function App() {
             </ProtectedRoute>
           }
         />
-        <Route path="/" element={<Navigate to="/pipelines" replace />} />
-        <Route path="*" element={<Navigate to="/pipelines" replace />} />
+        <Route
+          path="/teams/:teamId"
+          element={
+            <ProtectedRoute>
+              <Layout><TeamDetailPage /></Layout>
+            </ProtectedRoute>
+          }
+        />
+        <Route path="/" element={<Navigate to="/repositories" replace />} />
+        <Route path="*" element={<Navigate to="/repositories" replace />} />
       </Routes>
     </BrowserRouter>
   );

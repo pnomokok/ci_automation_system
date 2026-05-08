@@ -1,7 +1,6 @@
 import axios from 'axios';
 
 const BASE_URL = import.meta.env.VITE_API_URL || '';
-const REPO_MANAGER_URL = import.meta.env.VITE_REPO_MANAGER_URL || '';
 
 const api = axios.create({
   baseURL: `${BASE_URL}/api/v1`,
@@ -45,19 +44,14 @@ export const getPipelines = (params = {}) =>
 export const getPipeline = (id) =>
   api.get(`/pipelines/${id}`);
 
+export const getPipelinesByRepo = (repoId) =>
+  api.get('/pipelines', { params: { repo_id: repoId } });
+
 export const createPipeline = (repoUrl, branch) =>
   api.post('/pipelines', { repo_url: repoUrl, branch });
 
-export const triggerPipeline = (repoUrl, branch) => {
-  const triggerToken = import.meta.env.VITE_TRIGGER_API_KEY || '';
-  return axios.post(`${REPO_MANAGER_URL}/trigger`, { repo_url: repoUrl, branch }, {
-    headers: {
-      'Content-Type': 'application/json',
-      ...(triggerToken && { 'X-Trigger-Token': triggerToken }),
-    },
-    timeout: 120000,
-  });
-};
+export const triggerPipeline = (repoUrl, branch, teamId = null) =>
+  axios.post('/trigger', { repo_url: repoUrl, branch, team_id: teamId }, { timeout: 60000 });
 
 export const stopPipeline = (id) =>
   api.post(`/pipelines/${id}/stop`);
@@ -75,8 +69,19 @@ export const getTeams = () =>
 export const createTeam = (name) =>
   api.post('/teams', { name });
 
+export const getTeamDetail = (teamId) =>
+  api.get(`/teams/${teamId}`);
+
 export const getTeamMembers = (teamId) =>
   api.get(`/teams/${teamId}/members`);
+
+export const getTeamRepositories = async (teamId) => {
+  try {
+    return await api.get(`/teams/${teamId}/repositories`);
+  } catch {
+    return { data: [] };
+  }
+};
 
 export const addTeamMember = (teamId, username) =>
   api.post(`/teams/${teamId}/members`, { username });

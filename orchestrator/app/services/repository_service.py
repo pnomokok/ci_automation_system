@@ -3,9 +3,11 @@ from fastapi import HTTPException, status
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.repositories.repository_repo import RepositoryRepository
+from app.repositories.team_repo import TeamRepository
 from app.schemas.repository import RepositoryCreate
 
 _repo = RepositoryRepository()
+_team_repo = TeamRepository()
 
 _GITHUB_PREFIX = "https://github.com/"
 
@@ -57,7 +59,7 @@ async def _assert_public_github_repo(url: str) -> None:
 
 class RepositoryService:
 
-    async def create(self, session: AsyncSession, data: RepositoryCreate):
+    async def create(self, session: AsyncSession, data: RepositoryCreate, current_user_id: str):
         await _assert_public_github_repo(str(data.url))
 
         existing = await _repo.get_by_url(session, str(data.url))
@@ -66,16 +68,21 @@ class RepositoryService:
                 status_code=status.HTTP_409_CONFLICT,
                 detail={"code": "ALREADY_RUNNING", "message": "Bu URL zaten kayıtlı"},
             )
+        team_id = data.owner_id if data.owner_type == 'team' else None
         repo = await _repo.create(session, {
             "url":            str(data.url),
             "default_branch": data.default_branch,
             "webhook_secret": data.webhook_secret,
+            "user_id":        current_user_id,
+            "team_id":        team_id,
         })
         await session.commit()
         return repo
 
-    async def list(self, session: AsyncSession):
-        return await _repo.get_all(session)
+    async def list(self, session: AsyncSession, current_user_id: str):
+        teams = await _team_repo.get_all_for_user(session, current_user_id)
+        team_ids = [t.id for t in teams]
+        return await _repo.get_all(session, current_user_id, team_ids)
 
     async def delete(self, session: AsyncSession, repo_id: str):
         deleted = await _repo.delete(session, repo_id)

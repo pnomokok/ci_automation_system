@@ -1,5 +1,5 @@
 import { createContext, useCallback, useContext, useEffect, useState } from 'react';
-import { decodeToken, loginUser } from '../services/api';
+import { decodeToken, getTeams, loginUser } from '../services/api';
 
 const AuthContext = createContext(null);
 
@@ -9,6 +9,7 @@ export function AuthProvider({ children }) {
     const t = localStorage.getItem('access_token');
     return t ? decodeToken(t) : null;
   });
+  const [teams, setTeams] = useState([]);
   const [isLoading, setIsLoading] = useState(false);
 
   const isAuthenticated = Boolean(token);
@@ -21,6 +22,12 @@ export function AuthProvider({ children }) {
       localStorage.setItem('access_token', access_token);
       setToken(access_token);
       setUser(decodeToken(access_token));
+      try {
+        const teamsRes = await getTeams();
+        setTeams(teamsRes.data ?? []);
+      } catch {
+        // teams boş kalır, login akışını bozma
+      }
     } finally {
       setIsLoading(false);
     }
@@ -30,6 +37,7 @@ export function AuthProvider({ children }) {
     localStorage.removeItem('access_token');
     setToken(null);
     setUser(null);
+    setTeams([]);
   }, []);
 
   // Proactive expiry check: logout when JWT exp is reached
@@ -44,7 +52,7 @@ export function AuthProvider({ children }) {
   }, [token, logout]);
 
   return (
-    <AuthContext.Provider value={{ token, user, isAuthenticated, isLoading, login, logout }}>
+    <AuthContext.Provider value={{ token, user, teams, isAuthenticated, isLoading, login, logout }}>
       {children}
     </AuthContext.Provider>
   );

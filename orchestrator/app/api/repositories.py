@@ -13,9 +13,9 @@ _service = RepositoryService()
 @router.get("", response_model=list[RepositoryResponse])
 async def list_repositories(
     session: AsyncSession = Depends(get_db),
-    _: User = Depends(get_current_user),
+    current_user: User = Depends(get_current_user),
 ):
-    repos = await _service.list(session)
+    repos = await _service.list(session, current_user.id)
     return [RepositoryResponse.model_validate(r) for r in repos]
 
 
@@ -23,9 +23,9 @@ async def list_repositories(
 async def create_repository(
     body: RepositoryCreate,
     session: AsyncSession = Depends(get_db),
-    _: User = Depends(get_current_user),
+    current_user: User = Depends(get_current_user),
 ):
-    repo = await _service.create(session, body)
+    repo = await _service.create(session, body, current_user.id)
     return RepositoryResponse.model_validate(repo)
 
 
