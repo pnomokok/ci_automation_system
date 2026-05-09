@@ -16,7 +16,7 @@ def parse_push_payload(payload: dict[str, Any]) -> dict[str, Any]:
 
     return {
         "event": "push",
-        "repo_url": repo_url,
+        "repo_url": repo_url.removesuffix(".git"),
         "repo_name": repo_name,
         "branch": branch,
         "commit_hash": commit_hash,

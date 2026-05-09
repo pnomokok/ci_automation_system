@@ -23,5 +23,5 @@ def test_parse_push_payload_extracts_expected_fields() -> None:
     assert parsed["commit_hash"] == "abc123456789"
     assert parsed["commit_msg"] == "Add CI config"
     assert parsed["commit_author"] == "Zeynep"
-    assert parsed["repo_url"] == "https://github.com/org/sample-repo.git"
+    assert parsed["repo_url"] == "https://github.com/org/sample-repo"
     assert parsed["trigger_type"] == "webhook"
