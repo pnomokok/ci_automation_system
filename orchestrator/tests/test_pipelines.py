@@ -334,6 +334,55 @@ async def test_report_reads_all_pages_beyond_500(app_client):
     assert body["total_tests"] == 10
 
 
+# ── Stop/Delete yetki kontrolü ───────────────────────────────────────────────
+
+@pytest.mark.asyncio
+async def test_member_cannot_stop_others_pipeline(app_client, other_member_client):
+    """Repo member başka bir kullanıcının pipeline'ını durduramaz."""
+    # test_user olarak repo'ya other_user'ı member ekle
+    repos = await app_client.get("/api/v1/repositories")
+    repo_id = repos.json()[0]["id"]
+    other_client, other_username = other_member_client
+    await app_client.post(f"/api/v1/repositories/{repo_id}/members", json={"username": other_username, "role": "member"})
+
+    # test_user pipeline oluşturur
+    created = await create_pipeline(app_client)
+    pipeline_id = created["id"]
+
+    # other_user durdurmaya çalışır → 403
+    resp = await other_client.post(f"/api/v1/pipelines/{pipeline_id}/stop")
+    assert resp.status_code == 403
+    assert resp.json()["detail"]["code"] == "FORBIDDEN"
+
+
+@pytest.mark.asyncio
+async def test_owner_can_stop_others_pipeline(app_client, other_member_client):
+    """Repo owner başka bir kullanıcının pipeline'ını durdurabilir."""
+    repos = await app_client.get("/api/v1/repositories")
+    repo_id = repos.json()[0]["id"]
+    other_client, other_username = other_member_client
+    await app_client.post(f"/api/v1/repositories/{repo_id}/members", json={"username": other_username, "role": "owner"})
+
+    # test_user pipeline oluşturur
+    created = await create_pipeline(app_client)
+    pipeline_id = created["id"]
+
+    # other_user (owner) durdurabilmeli → 200
+    resp = await other_client.post(f"/api/v1/pipelines/{pipeline_id}/stop")
+    assert resp.status_code == 200
+    assert resp.json()["status"] == "STOPPED"
+
+
+@pytest.mark.asyncio
+async def test_triggerer_can_stop_own_pipeline(app_client):
+    """Pipeline'ı tetikleyen kullanıcı kendi pipeline'ını durdurabilir."""
+    created = await create_pipeline(app_client)
+    pipeline_id = created["id"]
+
+    resp = await app_client.post(f"/api/v1/pipelines/{pipeline_id}/stop")
+    assert resp.status_code == 200
+
+
 # ── Kimlik doğrulama kontrolü ─────────────────────────────────────────────────
 
 @pytest.mark.asyncio
