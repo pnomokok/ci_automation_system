@@ -22,7 +22,7 @@ class PipelineRepository:
     async def get_by_id(self, session: AsyncSession, pipeline_id: str) -> Pipeline | None:
         result = await session.execute(
             select(Pipeline)
-            .options(selectinload(Pipeline.steps))
+            .options(selectinload(Pipeline.steps), selectinload(Pipeline.triggered_by))
             .where(Pipeline.id == pipeline_id)
         )
         return result.scalar_one_or_none()

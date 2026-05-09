@@ -158,8 +158,11 @@ export default function PipelineDetailPage() {
             {pipeline.commit_author && (
               <MetaRow label="Yazar">{pipeline.commit_author}</MetaRow>
             )}
+            {pipeline.triggered_by_username && (
+              <MetaRow label="Tetikleyen">{pipeline.triggered_by_username}</MetaRow>
+            )}
             <MetaRow label="Tetikleme">
-              {pipeline.trigger_type === 'webhook' ? '🔗 Webhook' : '✋ Manuel'}
+              {pipeline.trigger_type === 'webhook' ? '🔗 Webhook' : 'Manuel'}
             </MetaRow>
             <MetaRow label="Başlangıç">{formatDate(pipeline.started_at)}</MetaRow>
             <MetaRow label="Bitiş">{formatDate(pipeline.finished_at)}</MetaRow>

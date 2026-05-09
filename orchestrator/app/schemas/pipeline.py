@@ -57,6 +57,7 @@ class PipelineDetailResponse(BaseModel):
     id: str
     repo_id: str | None
     triggered_by_id: str | None
+    triggered_by_username: str | None
     repo_url: str
     branch: str
     commit_hash: str | None
