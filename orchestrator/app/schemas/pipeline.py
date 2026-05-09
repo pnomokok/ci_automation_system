@@ -32,6 +32,7 @@ class PipelineCreate(BaseModel):
     commit_author: str | None = None
     trigger_type: TriggerType = TriggerType.manual
     workspace: str | None = None
+    triggered_by_username: str | None = None
 
 
 class PipelineListItem(BaseModel):

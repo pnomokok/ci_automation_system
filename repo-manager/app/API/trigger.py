@@ -26,6 +26,7 @@ class TriggerRequest(BaseModel):
     repo_url: str
     branch: str
     team_id: str | None = None
+    triggered_by_username: str | None = None
 
 
 @router.post("/trigger")
@@ -37,6 +38,7 @@ async def trigger_pipeline(
         data = prepare_manual_trigger_payload(payload.repo_url, payload.branch)
         data["trigger_type"] = "manual"
         data["team_id"] = payload.team_id
+        data["triggered_by_username"] = payload.triggered_by_username
         pipeline_request = build_pipeline_request(data)
         return send_to_orchestrator(pipeline_request)
     except GitOperationError as exc:

@@ -50,8 +50,12 @@ export const getPipelinesByRepo = (repoId) =>
 export const createPipeline = (repoUrl, branch) =>
   api.post('/pipelines', { repo_url: repoUrl, branch });
 
-export const triggerPipeline = (repoUrl, branch) =>
-  axios.post('/trigger', { repo_url: repoUrl, branch }, { timeout: 180000 });
+export const triggerPipeline = (repoUrl, branch) => {
+  const token = localStorage.getItem('access_token');
+  const decoded = token ? decodeToken(token) : null;
+  const triggered_by_username = decoded?.username ?? null;
+  return axios.post('/trigger', { repo_url: repoUrl, branch, triggered_by_username }, { timeout: 180000 });
+};
 
 export const stopPipeline = (id) =>
   api.post(`/pipelines/${id}/stop`);

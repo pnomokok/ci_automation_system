@@ -4,6 +4,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.deps import get_db
 from app.core.redis import get_redis
+from app.repositories.user_repo import UserRepository
 from app.schemas.internal import PipelineUpdateRequest, PipelineUpdateResponse
 from app.schemas.pipeline import PipelineCreate, PipelineCreateResponse
 from app.services.pipeline_service import PipelineService
@@ -12,6 +13,7 @@ from app.services.step_service import StepService
 router = APIRouter(tags=["internal"])
 _step_service = StepService()
 _pipeline_service = PipelineService()
+_user_repo = UserRepository()
 
 
 @router.patch("/pipelines/{pipeline_id}", response_model=PipelineUpdateResponse)
@@ -31,5 +33,8 @@ async def trigger_pipeline(
     redis: Redis = Depends(get_redis),
 ):
     """Repo Manager tarafından çağrılır — JWT gerektirmez, yalnızca Docker ağından erişilir."""
-    pipeline = await _pipeline_service.create(session, redis, body)
+    user = None
+    if body.triggered_by_username:
+        user = await _user_repo.get_by_username(session, body.triggered_by_username)
+    pipeline = await _pipeline_service.create(session, redis, body, user=user)
     return pipeline
