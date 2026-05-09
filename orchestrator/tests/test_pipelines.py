@@ -1,5 +1,6 @@
 import pytest
 
+pytestmark = pytest.mark.usefixtures("with_test_repo")
 
 REPO_URL = "https://github.com/org/repo"
 BRANCH = "main"

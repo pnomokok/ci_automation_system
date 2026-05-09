@@ -2,6 +2,7 @@ import pytest
 import pytest_asyncio
 from datetime import datetime, timezone, timedelta
 
+pytestmark = pytest.mark.usefixtures("with_test_repo")
 
 BASE = "/api/v1/internal"
 
