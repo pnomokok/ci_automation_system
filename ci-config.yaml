@@ -3,7 +3,7 @@ image: python:3.11-slim
 
 steps:
   install:
-    command: apt-get update -qq && apt-get install -y -qq git curl && curl -fsSL https://deb.nodesource.com/setup_20.x | bash - && apt-get install -y -qq nodejs && python -m venv .venv-orchestrator && .venv-orchestrator/bin/pip install -r orchestrator/requirements.txt && python -m venv .venv-repomanager && .venv-repomanager/bin/pip install -r repo-manager/requirements.txt && python -m venv .venv-runner && .venv-runner/bin/pip install -r runner/requirements.txt && cd dashboard && npm ci --loglevel=error
+    command: apt-get update -qq && apt-get install -y -qq git curl xz-utils && mkdir -p .nodeenv && curl -fsSL https://nodejs.org/dist/v20.11.0/node-v20.11.0-linux-x64.tar.xz | tar -xJ --strip-components=1 -C .nodeenv && export PATH="$(pwd)/.nodeenv/bin:$PATH" && python -m venv .venv-orchestrator && .venv-orchestrator/bin/pip install -r orchestrator/requirements.txt && python -m venv .venv-repomanager && .venv-repomanager/bin/pip install -r repo-manager/requirements.txt && python -m venv .venv-runner && .venv-runner/bin/pip install -r runner/requirements.txt && cd dashboard && npm ci --loglevel=error
     timeout: 1200
     network: bridge
   build:
@@ -11,7 +11,7 @@ steps:
     timeout: 60
     network: none
   test:
-    command: export GIT_PYTHON_REFRESH=quiet && result=0; cd orchestrator && ../.venv-orchestrator/bin/pytest tests/ -v --tb=short || result=1; cd ../repo-manager && ../.venv-repomanager/bin/pytest tests/ -v --tb=short || result=1; cd ../runner && ../.venv-runner/bin/pytest tests/ -v --tb=short || result=1; cd ../dashboard && node ./node_modules/.bin/vitest run || result=1; exit $result
+    command: export PATH="$(pwd)/.nodeenv/bin:$PATH" && export GIT_PYTHON_REFRESH=quiet && result=0; cd orchestrator && ../.venv-orchestrator/bin/pytest tests/ -v --tb=short || result=1; cd ../repo-manager && ../.venv-repomanager/bin/pytest tests/ -v --tb=short || result=1; cd ../runner && ../.venv-runner/bin/pytest tests/ -v --tb=short || result=1; cd ../dashboard && node ./node_modules/.bin/vitest run || result=1; exit $result
     timeout: 360
     network: none
 
