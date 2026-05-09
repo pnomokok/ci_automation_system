@@ -338,14 +338,13 @@ async def test_report_reads_all_pages_beyond_500(app_client):
 
 @pytest.mark.asyncio
 async def test_member_cannot_stop_others_pipeline(app_client, other_member_client):
-    """Repo member başka bir kullanıcının pipeline'ını durduramaz."""
-    # test_user olarak repo'ya other_user'ı member ekle
+    """Repo member başka bir kullanıcının (triggered_by_id kayıtlı) pipeline'ını durduramaz."""
     repos = await app_client.get("/api/v1/repositories")
     repo_id = repos.json()[0]["id"]
     other_client, other_username = other_member_client
     await app_client.post(f"/api/v1/repositories/{repo_id}/members", json={"username": other_username, "role": "member"})
 
-    # test_user pipeline oluşturur
+    # test_user pipeline oluşturur; triggered_by_id = test_user.id set edilir
     created = await create_pipeline(app_client)
     pipeline_id = created["id"]
 

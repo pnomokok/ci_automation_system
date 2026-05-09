@@ -137,9 +137,13 @@ class PipelineService:
         )
 
     async def _assert_can_modify(self, session: AsyncSession, pipeline: Pipeline, user: User | None) -> None:
-        """Kullanıcı pipeline'ı tetikleyenin kendisi veya repo owner'ı değilse 403 döner."""
+        """Kullanıcı pipeline'ı tetikleyenin kendisi veya repo owner'ı değilse 403 döner.
+        triggered_by_id kaydedilmemiş eski pipeline'larda üyelik yeterlidir (self.get zaten kontrol eder).
+        """
         if user is None:
             return
+        if pipeline.triggered_by_id is None:
+            return  # Eski pipeline: üyelik yeterliydi, self.get() zaten doğruladı
         if pipeline.triggered_by_id == user.id:
             return
         if pipeline.repo_id and await _member_repo.is_owner(session, pipeline.repo_id, user.id):
