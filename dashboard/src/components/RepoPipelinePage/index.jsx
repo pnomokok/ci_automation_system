@@ -401,7 +401,7 @@ export default function RepoPipelinePage() {
                         {pipeline.triggered_by_username ?? <span className="text-gray-600">—</span>}
                       </td>
                       <td className="px-4 py-3 text-gray-500 text-xs">
-                        {pipeline.trigger_type === 'webhook' ? '🔗 Webhook' : '✋ Manuel'}
+                        {pipeline.trigger_type === 'webhook' ? '🔗 Webhook' : 'Manuel'}
                       </td>
                       <td className="px-4 py-3 text-gray-400 font-mono text-xs">
                         {formatDuration(pipeline.duration_sec)}
