@@ -54,6 +54,7 @@ class PipelineDetailResponse(BaseModel):
     """GET /api/v1/pipelines/{id} — adımlar dahil tam detay."""
     id: str
     repo_id: str | None
+    triggered_by_id: str | None
     repo_url: str
     branch: str
     commit_hash: str | None

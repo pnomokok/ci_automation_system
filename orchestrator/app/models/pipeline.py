@@ -26,6 +26,7 @@ class Pipeline(Base):
 
     id: Mapped[str] = mapped_column(String(36), primary_key=True, default=lambda: str(uuid.uuid4()))
     repo_id: Mapped[str | None] = mapped_column(String(36), ForeignKey("repositories.id"), nullable=True)
+    triggered_by_id: Mapped[str | None] = mapped_column(String(36), ForeignKey("users.id", ondelete="SET NULL"), nullable=True)
     repo_url: Mapped[str] = mapped_column(String(512), nullable=False)
     branch: Mapped[str] = mapped_column(String(255), nullable=False)
     commit_hash: Mapped[str | None] = mapped_column(String(40), nullable=True)
@@ -39,4 +40,5 @@ class Pipeline(Base):
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=lambda: datetime.now(timezone.utc))
 
     repository: Mapped["Repository | None"] = relationship("Repository", back_populates="pipelines")
+    triggered_by: Mapped["User | None"] = relationship("User", foreign_keys=[triggered_by_id])
     steps: Mapped[list["Step"]] = relationship("Step", back_populates="pipeline", order_by="Step.order")

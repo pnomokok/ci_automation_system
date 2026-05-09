@@ -73,14 +73,15 @@ class PipelineService:
                 )
 
         pipeline = await _pipeline_repo.create(session, {
-            "repo_id":       repo.id,
-            "repo_url":      str(data.repo_url),
-            "branch":        data.branch,
-            "commit_hash":   data.commit_hash,
-            "commit_msg":    data.commit_msg,
-            "commit_author": data.commit_author,
-            "trigger_type":  data.trigger_type,
-            "status":        PipelineStatus.QUEUED,
+            "repo_id":          repo.id,
+            "triggered_by_id":  user.id if user else None,
+            "repo_url":         str(data.repo_url),
+            "branch":           data.branch,
+            "commit_hash":      data.commit_hash,
+            "commit_msg":       data.commit_msg,
+            "commit_author":    data.commit_author,
+            "trigger_type":     data.trigger_type,
+            "status":           PipelineStatus.QUEUED,
         })
 
         steps = await _step_repo.create_many(session, [
@@ -135,8 +136,22 @@ class PipelineService:
             user_id=user.id if user else None,
         )
 
+    async def _assert_can_modify(self, session: AsyncSession, pipeline: Pipeline, user: User | None) -> None:
+        """Kullanıcı pipeline'ı tetikleyenin kendisi veya repo owner'ı değilse 403 döner."""
+        if user is None:
+            return
+        if pipeline.triggered_by_id == user.id:
+            return
+        if pipeline.repo_id and await _member_repo.is_owner(session, pipeline.repo_id, user.id):
+            return
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail={"code": "FORBIDDEN", "message": "Bu işlem için yetkiniz yok. Yalnızca pipeline'ı tetikleyen kullanıcı veya repo owner'ı bu işlemi yapabilir."},
+        )
+
     async def stop(self, session: AsyncSession, redis: Redis, pipeline_id: str, user: User | None = None) -> Pipeline:
         pipeline = await self.get(session, pipeline_id, user=user)
+        await self._assert_can_modify(session, pipeline, user)
 
         if pipeline.status not in (PipelineStatus.QUEUED, PipelineStatus.RUNNING):
             raise HTTPException(
@@ -153,6 +168,7 @@ class PipelineService:
 
     async def delete(self, session: AsyncSession, pipeline_id: str, user: User | None = None) -> None:
         pipeline = await self.get(session, pipeline_id, user=user)
+        await self._assert_can_modify(session, pipeline, user)
         if pipeline.status in (PipelineStatus.QUEUED, PipelineStatus.RUNNING):
             raise HTTPException(
                 status_code=status.HTTP_409_CONFLICT,
