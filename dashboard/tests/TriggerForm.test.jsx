@@ -49,7 +49,7 @@ describe('TriggerForm', () => {
     fireEvent.click(screen.getByText('Pipeline Başlat'));
 
     await waitFor(() => {
-      expect(triggerPipeline).toHaveBeenCalledWith(REPO_URL, 'develop');
+      expect(triggerPipeline).toHaveBeenCalledWith(REPO_URL, 'develop', null);
     });
     expect(onSuccess).toHaveBeenCalledWith({ id: 'pl-1', status: 'QUEUED' });
   });
