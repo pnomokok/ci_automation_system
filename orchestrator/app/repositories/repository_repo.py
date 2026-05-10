@@ -37,7 +37,7 @@ class RepositoryRepository:
             update(Repository).where(Repository.id == repo_id).values(**data)
         )
         await session.flush()
-        await session.expire_all()
+        session.expire_all()
         return await self.get_by_id(session, repo_id)
 
     async def delete(self, session: AsyncSession, repo_id: str) -> bool:
