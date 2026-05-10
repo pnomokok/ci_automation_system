@@ -147,6 +147,22 @@ export default function PipelineDetailPage() {
         </div>
       )}
 
+      {pipeline?.status === 'FAILED' &&
+       pipeline.steps?.length > 0 &&
+       pipeline.steps.every(s => s.status === 'PENDING') && (
+        <div className="flex items-start gap-3 bg-yellow-950/50 border border-yellow-800/60 rounded-md px-4 py-3">
+          <span className="text-yellow-400 text-base mt-0.5">⚠</span>
+          <div>
+            <p className="text-yellow-300 text-sm font-medium">Pipeline başlamadan önce başarısız oldu</p>
+            <p className="text-yellow-500 text-xs mt-1">
+              Hiçbir adım çalıştırılmadı. Bunun en yaygın nedeni repoda{' '}
+              <code className="font-mono bg-dark-800 px-1 rounded">ci-config.yaml</code>{' '}
+              dosyasının bulunmamasıdır. Bu dosyayı varsayılan branch'e ekleyip pipeline'ı yeniden tetikleyin.
+            </p>
+          </div>
+        </div>
+      )}
+
       {pipeline && (
         <>
           <div className="bg-dark-900 border border-dark-600 rounded-lg px-4 py-1">
