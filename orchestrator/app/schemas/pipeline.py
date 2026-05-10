@@ -93,3 +93,4 @@ class PipelineReportResponse(BaseModel):
     failed: int
     skipped: int
     duration_sec: float
+    no_tests_found: bool = False

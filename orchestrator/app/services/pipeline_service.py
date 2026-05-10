@@ -254,13 +254,17 @@ class PipelineService:
 
         total = passed + failed + skipped
 
+        test_step = next((s for s in (pipeline.steps or []) if s.name == StepName.test), None)
+        no_tests_found = (total == 0 and test_step is not None and test_step.status == StepStatus.SUCCESS)
+
         duration = pipeline.duration_sec or 0
         return {
-            "pipeline_id":  pipeline_id,
-            "status":       pipeline.status,
-            "total_tests":  total,
-            "passed":       passed,
-            "failed":       failed,
-            "skipped":      skipped,
-            "duration_sec": float(duration),
+            "pipeline_id":    pipeline_id,
+            "status":         pipeline.status,
+            "total_tests":    total,
+            "passed":         passed,
+            "failed":         failed,
+            "skipped":        skipped,
+            "duration_sec":   float(duration),
+            "no_tests_found": no_tests_found,
         }

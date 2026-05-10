@@ -26,6 +26,11 @@ branches:
   - develop
 `;
 
+const TEST_TEMPLATE = `def test_example():
+    # Bu testi kendi test senaryolarınla değiştir
+    assert True
+`;
+
 function extractGithubPath(url) {
   const match = url.trim().replace(/\.git$/, '').match(/github\.com\/([^/]+)\/([^/]+)/);
   return match ? { owner: match[1], repo: match[2] } : null;
@@ -33,7 +38,7 @@ function extractGithubPath(url) {
 
 async function hasCiConfig(url, branch) {
   const parts = extractGithubPath(url);
-  if (!parts) return true; // bilinmiyorsa uyarma
+  if (!parts) return true;
   try {
     const res = await fetch(
       `https://api.github.com/repos/${parts.owner}/${parts.repo}/contents/ci-config.yaml?ref=${branch}`,
@@ -41,48 +46,104 @@ async function hasCiConfig(url, branch) {
     );
     return res.ok;
   } catch {
-    return true; // ağ hatası varsa sessizce geç
+    return true;
   }
 }
 
-function CiConfigStep({ onClose }) {
-  const [copied, setCopied] = useState(false);
+async function hasTestFiles(url, branch) {
+  const parts = extractGithubPath(url);
+  if (!parts) return true;
+  try {
+    const check = (path) => fetch(
+      `https://api.github.com/repos/${parts.owner}/${parts.repo}/contents/${path}?ref=${branch}`,
+      { headers: { Accept: 'application/vnd.github.v3+json' } }
+    ).then(r => r.ok).catch(() => false);
+    const [hasTests, hasTest] = await Promise.all([check('tests'), check('test')]);
+    return hasTests || hasTest;
+  } catch {
+    return true;
+  }
+}
 
+function CopyableTemplate({ content }) {
+  const [copied, setCopied] = useState(false);
   const handleCopy = () => {
-    navigator.clipboard.writeText(CI_CONFIG_TEMPLATE);
+    navigator.clipboard.writeText(content);
     setCopied(true);
     setTimeout(() => setCopied(false), 2000);
   };
+  return (
+    <div className="relative">
+      <pre className="bg-dark-800 border border-dark-600 rounded-md px-4 py-3 text-xs text-gray-300 font-mono overflow-x-auto whitespace-pre">
+        {content}
+      </pre>
+      <button
+        onClick={handleCopy}
+        className="absolute top-2 right-2 bg-dark-700 hover:bg-dark-600 border border-dark-500
+                   text-gray-400 hover:text-gray-200 text-xs px-2 py-1 rounded transition-colors"
+      >
+        {copied ? 'Kopyalandı!' : 'Kopyala'}
+      </button>
+    </div>
+  );
+}
+
+function PostAddWarningStep({ missingCiConfig, missingTests, onClose }) {
+  const both = missingCiConfig && missingTests;
+  const [activeTab, setActiveTab] = useState(missingCiConfig ? 'ci-config' : 'tests');
 
   return (
     <div className="flex flex-col gap-4">
-      <div className="flex items-start gap-3 bg-yellow-950/50 border border-yellow-800/60 rounded-md px-4 py-3">
-        <span className="text-yellow-400 text-base mt-0.5">⚠</span>
-        <div>
-          <p className="text-yellow-300 text-sm font-medium">ci-config.yaml bulunamadı</p>
-          <p className="text-yellow-500 text-xs mt-0.5">
-            Pipeline'ların çalışabilmesi için bu dosyanın repoya eklenmesi gerekiyor.
-            Aşağıdaki şablonu kopyalayıp repona ekle.
-          </p>
+      {both && (
+        <div className="flex gap-1 border-b border-dark-600">
+          {[{ id: 'ci-config', label: 'ci-config.yaml' }, { id: 'tests', label: 'tests/' }].map(tab => (
+            <button
+              key={tab.id}
+              onClick={() => setActiveTab(tab.id)}
+              className={`px-4 py-2 text-sm font-medium transition-colors border-b-2 -mb-px ${
+                activeTab === tab.id
+                  ? 'text-white border-yellow-500'
+                  : 'text-gray-500 hover:text-gray-300 border-transparent'
+              }`}
+            >
+              {tab.label}
+            </button>
+          ))}
         </div>
-      </div>
+      )}
 
-      <div className="relative">
-        <pre className="bg-dark-800 border border-dark-600 rounded-md px-4 py-3 text-xs text-gray-300 font-mono overflow-x-auto whitespace-pre">
-          {CI_CONFIG_TEMPLATE}
-        </pre>
-        <button
-          onClick={handleCopy}
-          className="absolute top-2 right-2 bg-dark-700 hover:bg-dark-600 border border-dark-500
-                     text-gray-400 hover:text-gray-200 text-xs px-2 py-1 rounded transition-colors"
-        >
-          {copied ? 'Kopyalandı!' : 'Kopyala'}
-        </button>
-      </div>
+      {(!both || activeTab === 'ci-config') && missingCiConfig && (
+        <div className="flex flex-col gap-3">
+          <div className="flex items-start gap-3 bg-yellow-950/50 border border-yellow-800/60 rounded-md px-4 py-3">
+            <span className="text-yellow-400 text-base mt-0.5">⚠</span>
+            <div>
+              <p className="text-yellow-300 text-sm font-medium">ci-config.yaml bulunamadı</p>
+              <p className="text-yellow-500 text-xs mt-0.5">
+                Pipeline'ların çalışabilmesi için bu dosyanın repoya eklenmesi gerekiyor.
+              </p>
+            </div>
+          </div>
+          <CopyableTemplate content={CI_CONFIG_TEMPLATE} />
+        </div>
+      )}
 
-      <p className="text-xs text-gray-500">
-        Dosyayı repona ekledikten sonra pipeline tetikleyebilirsin.
-      </p>
+      {(!both || activeTab === 'tests') && missingTests && (
+        <div className="flex flex-col gap-3">
+          <div className="flex items-start gap-3 bg-yellow-950/50 border border-yellow-800/60 rounded-md px-4 py-3">
+            <span className="text-yellow-400 text-base mt-0.5">⚠</span>
+            <div>
+              <p className="text-yellow-300 text-sm font-medium">Test dosyaları bulunamadı</p>
+              <p className="text-yellow-500 text-xs mt-0.5">
+                <code className="font-mono bg-dark-800 px-1 rounded">tests/</code> klasörü
+                bulunamadı. Test adımı çalışır ancak sonuçlar raporlanamaz. Aşağıdaki örneği{' '}
+                <code className="font-mono bg-dark-800 px-1 rounded">tests/test_example.py</code>{' '}
+                olarak ekle.
+              </p>
+            </div>
+          </div>
+          <CopyableTemplate content={TEST_TEMPLATE} />
+        </div>
+      )}
 
       <div className="flex justify-end">
         <button
@@ -100,7 +161,9 @@ function AddRepoModal({ onSuccess, onClose }) {
   const [form, setForm] = useState({ url: '', default_branch: 'main', webhook_secret: '' });
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
-  const [showCiStep, setShowCiStep] = useState(false);
+  const [showWarningStep, setShowWarningStep] = useState(false);
+  const [missingCiConfig, setMissingCiConfig] = useState(false);
+  const [missingTests, setMissingTests] = useState(false);
   const [addedRepo, setAddedRepo] = useState(null);
 
   const handleSubmit = async (e) => {
@@ -117,9 +180,15 @@ function AddRepoModal({ onSuccess, onClose }) {
       });
       setAddedRepo(res.data);
       const branch = form.default_branch.trim() || 'main';
-      const exists = await hasCiConfig(form.url.trim(), branch);
-      if (!exists) {
-        setShowCiStep(true);
+      const url = form.url.trim();
+      const [ciExists, testsExist] = await Promise.all([
+        hasCiConfig(url, branch),
+        hasTestFiles(url, branch),
+      ]);
+      if (!ciExists || !testsExist) {
+        setMissingCiConfig(!ciExists);
+        setMissingTests(!testsExist);
+        setShowWarningStep(true);
       } else {
         onSuccess(res.data);
       }
@@ -130,18 +199,22 @@ function AddRepoModal({ onSuccess, onClose }) {
     }
   };
 
-  const handleCiStepClose = () => {
-    setShowCiStep(false);
+  const handleWarningClose = () => {
+    setShowWarningStep(false);
     onSuccess(addedRepo);
   };
 
   return (
     <div className="fixed inset-0 bg-black/60 flex items-center justify-center z-50">
       <div className="bg-dark-900 border border-dark-600 rounded-lg w-full max-w-lg p-6 shadow-xl">
-        {showCiStep ? (
+        {showWarningStep ? (
           <>
             <h2 className="text-base font-semibold text-gray-100 mb-4">Repository Eklendi</h2>
-            <CiConfigStep onClose={handleCiStepClose} />
+            <PostAddWarningStep
+              missingCiConfig={missingCiConfig}
+              missingTests={missingTests}
+              onClose={handleWarningClose}
+            />
           </>
         ) : (
           <>

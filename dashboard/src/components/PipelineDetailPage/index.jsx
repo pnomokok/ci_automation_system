@@ -197,24 +197,38 @@ export default function PipelineDetailPage() {
           {report && (
             <div>
               <h2 className="text-sm font-semibold text-gray-400 uppercase tracking-wider mb-2">Test Raporu</h2>
-              <div className="bg-dark-900 border border-dark-600 rounded-lg px-5 py-4 grid grid-cols-2 gap-4 sm:grid-cols-4">
-                <div className="text-center">
-                  <div className="text-2xl font-bold text-gray-100">{report.total_tests}</div>
-                  <div className="text-xs text-gray-500 mt-0.5">Toplam</div>
+              {report.no_tests_found ? (
+                <div className="flex items-start gap-3 bg-yellow-950/50 border border-yellow-800/60 rounded-md px-4 py-3">
+                  <span className="text-yellow-400 text-base mt-0.5">⚠</span>
+                  <div>
+                    <p className="text-yellow-300 text-sm font-medium">Test adımı çalıştı ancak hiçbir test bulunamadı</p>
+                    <p className="text-yellow-500 text-xs mt-1">
+                      Pipeline başarıyla tamamlandı fakat test sonuçları raporlanamadı.{' '}
+                      <code className="font-mono bg-dark-800 px-1 rounded">tests/</code>{' '}
+                      klasörüne test dosyaları ekleyerek CI güvenilirliğini artırabilirsin.
+                    </p>
+                  </div>
                 </div>
-                <div className="text-center">
-                  <div className="text-2xl font-bold text-green-400">{report.passed}</div>
-                  <div className="text-xs text-gray-500 mt-0.5">Geçti</div>
+              ) : (
+                <div className="bg-dark-900 border border-dark-600 rounded-lg px-5 py-4 grid grid-cols-2 gap-4 sm:grid-cols-4">
+                  <div className="text-center">
+                    <div className="text-2xl font-bold text-gray-100">{report.total_tests}</div>
+                    <div className="text-xs text-gray-500 mt-0.5">Toplam</div>
+                  </div>
+                  <div className="text-center">
+                    <div className="text-2xl font-bold text-green-400">{report.passed}</div>
+                    <div className="text-xs text-gray-500 mt-0.5">Geçti</div>
+                  </div>
+                  <div className="text-center">
+                    <div className="text-2xl font-bold text-red-400">{report.failed}</div>
+                    <div className="text-xs text-gray-500 mt-0.5">Başarısız</div>
+                  </div>
+                  <div className="text-center">
+                    <div className="text-2xl font-bold text-gray-400">{report.skipped}</div>
+                    <div className="text-xs text-gray-500 mt-0.5">Atlandı</div>
+                  </div>
                 </div>
-                <div className="text-center">
-                  <div className="text-2xl font-bold text-red-400">{report.failed}</div>
-                  <div className="text-xs text-gray-500 mt-0.5">Başarısız</div>
-                </div>
-                <div className="text-center">
-                  <div className="text-2xl font-bold text-gray-400">{report.skipped}</div>
-                  <div className="text-xs text-gray-500 mt-0.5">Atlandı</div>
-                </div>
-              </div>
+              )}
             </div>
           )}
 
