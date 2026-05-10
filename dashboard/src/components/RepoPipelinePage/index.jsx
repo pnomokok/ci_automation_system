@@ -465,6 +465,7 @@ export default function RepoPipelinePage() {
       {showTrigger && repo && (
         <TriggerForm
           repoUrl={repo.url}
+          defaultBranch={repo.default_branch}
           onSuccess={(pipeline) => {
             setShowTrigger(false);
             if (pipeline?.id) {

@@ -1,8 +1,8 @@
 import { useState } from 'react';
 import { triggerPipeline, formatApiError } from '../../services/api';
 
-export default function TriggerForm({ repoUrl, onSuccess, onClose }) {
-  const [form, setForm] = useState({ branch: 'main' });
+export default function TriggerForm({ repoUrl, defaultBranch = 'main', onSuccess, onClose }) {
+  const [form, setForm] = useState({ branch: defaultBranch });
   const [errors, setErrors] = useState({});
   const [loading, setLoading] = useState(false);
   const [apiError, setApiError] = useState('');
