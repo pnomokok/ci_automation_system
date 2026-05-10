@@ -6,10 +6,102 @@ function repoShortName(url) {
   return url?.replace(/^https?:\/\/github\.com\//, '') || url || '—';
 }
 
+const CI_CONFIG_TEMPLATE = `runtime: python
+image: python:3.11-slim
+steps:
+  install:
+    command: pip install -r requirements.txt
+    timeout: 120
+    network: bridge
+  build:
+    command: echo "build ok"
+    timeout: 60
+    network: none
+  test:
+    command: pytest tests/ -v
+    timeout: 300
+    network: none
+branches:
+  - main
+  - develop
+`;
+
+function extractGithubPath(url) {
+  const match = url.trim().replace(/\.git$/, '').match(/github\.com\/([^/]+)\/([^/]+)/);
+  return match ? { owner: match[1], repo: match[2] } : null;
+}
+
+async function hasCiConfig(url, branch) {
+  const parts = extractGithubPath(url);
+  if (!parts) return true; // bilinmiyorsa uyarma
+  try {
+    const res = await fetch(
+      `https://api.github.com/repos/${parts.owner}/${parts.repo}/contents/ci-config.yaml?ref=${branch}`,
+      { headers: { Accept: 'application/vnd.github.v3+json' } }
+    );
+    return res.ok;
+  } catch {
+    return true; // ağ hatası varsa sessizce geç
+  }
+}
+
+function CiConfigStep({ onClose }) {
+  const [copied, setCopied] = useState(false);
+
+  const handleCopy = () => {
+    navigator.clipboard.writeText(CI_CONFIG_TEMPLATE);
+    setCopied(true);
+    setTimeout(() => setCopied(false), 2000);
+  };
+
+  return (
+    <div className="flex flex-col gap-4">
+      <div className="flex items-start gap-3 bg-yellow-950/50 border border-yellow-800/60 rounded-md px-4 py-3">
+        <span className="text-yellow-400 text-base mt-0.5">⚠</span>
+        <div>
+          <p className="text-yellow-300 text-sm font-medium">ci-config.yaml bulunamadı</p>
+          <p className="text-yellow-500 text-xs mt-0.5">
+            Pipeline'ların çalışabilmesi için bu dosyanın repoya eklenmesi gerekiyor.
+            Aşağıdaki şablonu kopyalayıp repona ekle.
+          </p>
+        </div>
+      </div>
+
+      <div className="relative">
+        <pre className="bg-dark-800 border border-dark-600 rounded-md px-4 py-3 text-xs text-gray-300 font-mono overflow-x-auto whitespace-pre">
+          {CI_CONFIG_TEMPLATE}
+        </pre>
+        <button
+          onClick={handleCopy}
+          className="absolute top-2 right-2 bg-dark-700 hover:bg-dark-600 border border-dark-500
+                     text-gray-400 hover:text-gray-200 text-xs px-2 py-1 rounded transition-colors"
+        >
+          {copied ? 'Kopyalandı!' : 'Kopyala'}
+        </button>
+      </div>
+
+      <p className="text-xs text-gray-500">
+        Dosyayı repona ekledikten sonra pipeline tetikleyebilirsin.
+      </p>
+
+      <div className="flex justify-end">
+        <button
+          onClick={onClose}
+          className="bg-blue-600 hover:bg-blue-700 text-white text-sm font-medium px-4 py-2 rounded-md transition-colors"
+        >
+          Tamam
+        </button>
+      </div>
+    </div>
+  );
+}
+
 function AddRepoModal({ onSuccess, onClose }) {
   const [form, setForm] = useState({ url: '', default_branch: 'main', webhook_secret: '' });
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
+  const [showCiStep, setShowCiStep] = useState(false);
+  const [addedRepo, setAddedRepo] = useState(null);
 
   const handleSubmit = async (e) => {
     e.preventDefault();
@@ -23,7 +115,14 @@ function AddRepoModal({ onSuccess, onClose }) {
         default_branch: form.default_branch.trim() || 'main',
         webhook_secret: form.webhook_secret.trim(),
       });
-      onSuccess(res.data);
+      setAddedRepo(res.data);
+      const branch = form.default_branch.trim() || 'main';
+      const exists = await hasCiConfig(form.url.trim(), branch);
+      if (!exists) {
+        setShowCiStep(true);
+      } else {
+        onSuccess(res.data);
+      }
     } catch (err) {
       setError(formatApiError(err));
     } finally {
@@ -31,60 +130,74 @@ function AddRepoModal({ onSuccess, onClose }) {
     }
   };
 
+  const handleCiStepClose = () => {
+    setShowCiStep(false);
+    onSuccess(addedRepo);
+  };
+
   return (
     <div className="fixed inset-0 bg-black/60 flex items-center justify-center z-50">
-      <div className="bg-dark-900 border border-dark-600 rounded-lg w-full max-w-md p-6 shadow-xl">
-        <h2 className="text-base font-semibold text-gray-100 mb-1">Yeni Repository Ekle</h2>
-        <p className="text-xs text-gray-500 mb-4">Bu repoyu ekleyen kişi otomatik olarak owner olur.</p>
-        <form onSubmit={handleSubmit} className="flex flex-col gap-4">
-          <div>
-            <label className="block text-xs text-gray-400 mb-1">Repository URL</label>
-            <input
-              type="text"
-              placeholder="https://github.com/org/repo"
-              value={form.url}
-              onChange={(e) => setForm(f => ({ ...f, url: e.target.value }))}
-              className="w-full bg-dark-800 border border-dark-600 text-gray-200 text-sm rounded-md px-3 py-2
-                         focus:outline-none focus:border-blue-500"
-            />
-          </div>
-          <div>
-            <label className="block text-xs text-gray-400 mb-1">Varsayılan Branch</label>
-            <input
-              type="text"
-              placeholder="main"
-              value={form.default_branch}
-              onChange={(e) => setForm(f => ({ ...f, default_branch: e.target.value }))}
-              className="w-full bg-dark-800 border border-dark-600 text-gray-200 text-sm rounded-md px-3 py-2
-                         focus:outline-none focus:border-blue-500"
-            />
-          </div>
-          <div>
-            <label className="block text-xs text-gray-400 mb-1">Webhook Secret</label>
-            <input
-              type="password"
-              placeholder="gizli_anahtar"
-              value={form.webhook_secret}
-              onChange={(e) => setForm(f => ({ ...f, webhook_secret: e.target.value }))}
-              className="w-full bg-dark-800 border border-dark-600 text-gray-200 text-sm rounded-md px-3 py-2
-                         focus:outline-none focus:border-blue-500"
-            />
-          </div>
+      <div className="bg-dark-900 border border-dark-600 rounded-lg w-full max-w-lg p-6 shadow-xl">
+        {showCiStep ? (
+          <>
+            <h2 className="text-base font-semibold text-gray-100 mb-4">Repository Eklendi</h2>
+            <CiConfigStep onClose={handleCiStepClose} />
+          </>
+        ) : (
+          <>
+            <h2 className="text-base font-semibold text-gray-100 mb-1">Yeni Repository Ekle</h2>
+            <p className="text-xs text-gray-500 mb-4">Bu repoyu ekleyen kişi otomatik olarak owner olur.</p>
+            <form onSubmit={handleSubmit} className="flex flex-col gap-4">
+              <div>
+                <label className="block text-xs text-gray-400 mb-1">Repository URL</label>
+                <input
+                  type="text"
+                  placeholder="https://github.com/org/repo"
+                  value={form.url}
+                  onChange={(e) => setForm(f => ({ ...f, url: e.target.value }))}
+                  className="w-full bg-dark-800 border border-dark-600 text-gray-200 text-sm rounded-md px-3 py-2
+                             focus:outline-none focus:border-blue-500"
+                />
+              </div>
+              <div>
+                <label className="block text-xs text-gray-400 mb-1">Varsayılan Branch</label>
+                <input
+                  type="text"
+                  placeholder="main"
+                  value={form.default_branch}
+                  onChange={(e) => setForm(f => ({ ...f, default_branch: e.target.value }))}
+                  className="w-full bg-dark-800 border border-dark-600 text-gray-200 text-sm rounded-md px-3 py-2
+                             focus:outline-none focus:border-blue-500"
+                />
+              </div>
+              <div>
+                <label className="block text-xs text-gray-400 mb-1">Webhook Secret</label>
+                <input
+                  type="password"
+                  placeholder="gizli_anahtar"
+                  value={form.webhook_secret}
+                  onChange={(e) => setForm(f => ({ ...f, webhook_secret: e.target.value }))}
+                  className="w-full bg-dark-800 border border-dark-600 text-gray-200 text-sm rounded-md px-3 py-2
+                             focus:outline-none focus:border-blue-500"
+                />
+              </div>
 
-          {error && <p className="text-red-400 text-sm">{error}</p>}
+              {error && <p className="text-red-400 text-sm">{error}</p>}
 
-          <div className="flex gap-3 justify-end mt-2">
-            <button type="button" onClick={onClose}
-              className="px-4 py-2 text-sm text-gray-400 hover:text-gray-200 transition-colors">
-              İptal
-            </button>
-            <button type="submit" disabled={loading}
-              className="bg-blue-600 hover:bg-blue-700 disabled:opacity-50 text-white text-sm font-medium
-                         px-4 py-2 rounded-md transition-colors">
-              {loading ? 'Ekleniyor...' : 'Ekle'}
-            </button>
-          </div>
-        </form>
+              <div className="flex gap-3 justify-end mt-2">
+                <button type="button" onClick={onClose}
+                  className="px-4 py-2 text-sm text-gray-400 hover:text-gray-200 transition-colors">
+                  İptal
+                </button>
+                <button type="submit" disabled={loading}
+                  className="bg-blue-600 hover:bg-blue-700 disabled:opacity-50 text-white text-sm font-medium
+                             px-4 py-2 rounded-md transition-colors">
+                  {loading ? 'Kontrol ediliyor...' : 'Ekle'}
+                </button>
+              </div>
+            </form>
+          </>
+        )}
       </div>
     </div>
   );
