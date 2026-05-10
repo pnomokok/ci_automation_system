@@ -298,10 +298,15 @@ function RepoCard({ repo, pipelineCount, onClick, onEdit, onDelete }) {
     >
       <div onClick={onClick} className="cursor-pointer">
         <div className="flex items-start justify-between gap-2">
-          <span className="font-mono text-sm text-gray-200 group-hover:text-white transition-colors break-all pr-14">
+          <span className="font-mono text-sm text-gray-200 group-hover:text-white transition-colors break-all pr-6">
             {repoShortName(repo.url)}
           </span>
-          <span className="text-gray-600 group-hover:text-blue-400 transition-colors text-sm shrink-0">→</span>
+          {/* Owner: ok hover'da kaybolur, butonlar onun yerine gelir */}
+          <span className={`transition-opacity text-sm shrink-0 ${
+            isOwner
+              ? 'text-gray-600 group-hover:opacity-0'
+              : 'text-gray-600 group-hover:text-blue-400'
+          }`}>→</span>
         </div>
         <div className="mt-2 flex items-center gap-2 flex-wrap">
           <RoleBadge role={repo.my_role} />
@@ -312,17 +317,17 @@ function RepoCard({ repo, pipelineCount, onClick, onEdit, onDelete }) {
         </div>
       </div>
       {isOwner && (
-        <div className="absolute top-3 right-2 flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+        <div className="absolute top-3 right-3 flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
           <button
             onClick={(e) => { e.stopPropagation(); onEdit(repo); }}
-            className="text-gray-600 hover:text-blue-400 text-xs px-1.5 py-0.5 rounded"
+            className="text-gray-500 hover:text-blue-400 text-sm px-1 py-0.5 rounded transition-colors"
             title="Repoyu düzenle"
           >
             ✎
           </button>
           <button
             onClick={(e) => { e.stopPropagation(); onDelete(repo); }}
-            className="text-gray-600 hover:text-red-400 text-xs px-1.5 py-0.5 rounded"
+            className="text-gray-500 hover:text-red-400 text-sm px-1 py-0.5 rounded transition-colors"
             title="Repoyu sil"
           >
             ✕
