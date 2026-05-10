@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { createRepository, deleteRepository, formatApiError, getPipelines, getRepositories } from '../../services/api';
+import { createRepository, deleteRepository, formatApiError, getPipelines, getRepositories, updateRepository } from '../../services/api';
 
 function repoShortName(url) {
   return url?.replace(/^https?:\/\/github\.com\//, '') || url || '—';
@@ -289,7 +289,7 @@ function RoleBadge({ role }) {
   );
 }
 
-function RepoCard({ repo, pipelineCount, onClick, onDelete }) {
+function RepoCard({ repo, pipelineCount, onClick, onEdit, onDelete }) {
   const isOwner = repo.my_role === 'owner';
   return (
     <div
@@ -298,7 +298,7 @@ function RepoCard({ repo, pipelineCount, onClick, onDelete }) {
     >
       <div onClick={onClick} className="cursor-pointer">
         <div className="flex items-start justify-between gap-2">
-          <span className="font-mono text-sm text-gray-200 group-hover:text-white transition-colors break-all pr-6">
+          <span className="font-mono text-sm text-gray-200 group-hover:text-white transition-colors break-all pr-14">
             {repoShortName(repo.url)}
           </span>
           <span className="text-gray-600 group-hover:text-blue-400 transition-colors text-sm shrink-0">→</span>
@@ -312,15 +312,98 @@ function RepoCard({ repo, pipelineCount, onClick, onDelete }) {
         </div>
       </div>
       {isOwner && (
-        <button
-          onClick={(e) => { e.stopPropagation(); onDelete(repo); }}
-          className="absolute top-3 right-8 opacity-0 group-hover:opacity-100 transition-opacity
-                     text-gray-600 hover:text-red-400 text-xs px-1.5 py-0.5 rounded"
-          title="Repoyu sil"
-        >
-          ✕
-        </button>
+        <div className="absolute top-3 right-2 flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+          <button
+            onClick={(e) => { e.stopPropagation(); onEdit(repo); }}
+            className="text-gray-600 hover:text-blue-400 text-xs px-1.5 py-0.5 rounded"
+            title="Repoyu düzenle"
+          >
+            ✎
+          </button>
+          <button
+            onClick={(e) => { e.stopPropagation(); onDelete(repo); }}
+            className="text-gray-600 hover:text-red-400 text-xs px-1.5 py-0.5 rounded"
+            title="Repoyu sil"
+          >
+            ✕
+          </button>
+        </div>
       )}
+    </div>
+  );
+}
+
+function EditRepoModal({ repo, onSuccess, onClose }) {
+  const [form, setForm] = useState({ default_branch: repo.default_branch, webhook_secret: '' });
+  const [error, setError] = useState('');
+  const [loading, setLoading] = useState(false);
+
+  const handleSubmit = async (e) => {
+    e.preventDefault();
+    const patch = {};
+    if (form.default_branch.trim() && form.default_branch.trim() !== repo.default_branch) {
+      patch.default_branch = form.default_branch.trim();
+    }
+    if (form.webhook_secret.trim()) {
+      patch.webhook_secret = form.webhook_secret.trim();
+    }
+    if (Object.keys(patch).length === 0) { onClose(); return; }
+    setLoading(true);
+    setError('');
+    try {
+      const res = await updateRepository(repo.id, patch);
+      onSuccess(res.data);
+    } catch (err) {
+      setError(formatApiError(err));
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  return (
+    <div className="fixed inset-0 bg-black/60 flex items-center justify-center z-50">
+      <div className="bg-dark-900 border border-dark-600 rounded-lg w-full max-w-md p-6 shadow-xl">
+        <h2 className="text-base font-semibold text-gray-100 mb-1">Repoyu Düzenle</h2>
+        <p className="text-xs text-gray-500 mb-4 font-mono break-all">{repoShortName(repo.url)}</p>
+        <form onSubmit={handleSubmit} className="flex flex-col gap-4">
+          <div>
+            <label className="block text-xs text-gray-400 mb-1">Varsayılan Branch</label>
+            <input
+              type="text"
+              value={form.default_branch}
+              onChange={(e) => setForm(f => ({ ...f, default_branch: e.target.value }))}
+              className="w-full bg-dark-800 border border-dark-600 text-gray-200 text-sm rounded-md px-3 py-2
+                         focus:outline-none focus:border-blue-500"
+            />
+          </div>
+          <div>
+            <label className="block text-xs text-gray-400 mb-1">
+              Yeni Webhook Secret{' '}
+              <span className="text-gray-600">(boş bırakılırsa değişmez)</span>
+            </label>
+            <input
+              type="password"
+              placeholder="Yeni gizli anahtar"
+              value={form.webhook_secret}
+              onChange={(e) => setForm(f => ({ ...f, webhook_secret: e.target.value }))}
+              className="w-full bg-dark-800 border border-dark-600 text-gray-200 text-sm rounded-md px-3 py-2
+                         focus:outline-none focus:border-blue-500"
+            />
+          </div>
+          {error && <p className="text-red-400 text-sm">{error}</p>}
+          <div className="flex gap-3 justify-end mt-2">
+            <button type="button" onClick={onClose}
+              className="px-4 py-2 text-sm text-gray-400 hover:text-gray-200 transition-colors">
+              İptal
+            </button>
+            <button type="submit" disabled={loading}
+              className="bg-blue-600 hover:bg-blue-700 disabled:opacity-50 text-white text-sm font-medium
+                         px-4 py-2 rounded-md transition-colors">
+              {loading ? 'Kaydediliyor...' : 'Kaydet'}
+            </button>
+          </div>
+        </form>
+      </div>
     </div>
   );
 }
@@ -367,6 +450,7 @@ export default function RepositoriesPage() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
   const [showAdd, setShowAdd] = useState(false);
+  const [editTarget, setEditTarget] = useState(null);
   const [deleteTarget, setDeleteTarget] = useState(null);
   const [deleteLoading, setDeleteLoading] = useState(false);
   const [deleteError, setDeleteError] = useState('');
@@ -451,6 +535,7 @@ export default function RepositoriesPage() {
                   <RepoCard key={repo.id} repo={repo}
                     pipelineCount={pipelineCounts[repo.id]}
                     onClick={() => navigate(`/repositories/${repo.id}`)}
+                    onEdit={setEditTarget}
                     onDelete={setDeleteTarget} />
                 ))}
               </div>
@@ -466,6 +551,7 @@ export default function RepositoriesPage() {
                   <RepoCard key={repo.id} repo={repo}
                     pipelineCount={pipelineCounts[repo.id]}
                     onClick={() => navigate(`/repositories/${repo.id}`)}
+                    onEdit={setEditTarget}
                     onDelete={setDeleteTarget} />
                 ))}
               </div>
@@ -478,6 +564,17 @@ export default function RepositoriesPage() {
         <AddRepoModal
           onSuccess={() => { setShowAdd(false); fetchRepos(); }}
           onClose={() => setShowAdd(false)}
+        />
+      )}
+
+      {editTarget && (
+        <EditRepoModal
+          repo={editTarget}
+          onSuccess={(updatedRepo) => {
+            setRepos(rs => rs.map(r => r.id === updatedRepo.id ? { ...r, ...updatedRepo } : r));
+            setEditTarget(null);
+          }}
+          onClose={() => setEditTarget(null)}
         />
       )}
 

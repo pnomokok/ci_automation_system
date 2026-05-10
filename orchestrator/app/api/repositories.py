@@ -9,7 +9,7 @@ from app.models.user import User
 from app.repositories.repository_member_repo import RepositoryMemberRepository
 from app.repositories.repository_repo import RepositoryRepository
 from app.repositories.user_repo import UserRepository
-from app.schemas.repository import RepositoryCreate, RepositoryResponse
+from app.schemas.repository import RepositoryCreate, RepositoryResponse, RepositoryUpdate
 from app.schemas.repository_member import (
     RepositoryMemberAdd,
     RepositoryMemberResponse,
@@ -55,6 +55,19 @@ async def create_repository(
 ):
     repo = await _service.create(session, body, current_user.id)
     return _build_response(repo, RepoRole.owner)
+
+
+@router.patch("/{repo_id}", response_model=RepositoryResponse)
+async def update_repository(
+    repo_id: str,
+    body: RepositoryUpdate,
+    session: AsyncSession = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
+    repo = await _service.update(session, repo_id, body, current_user.id)
+    await session.commit()
+    member = await _member_repo.get(session, repo_id, current_user.id)
+    return _build_response(repo, RepoRole(member.role))
 
 
 @router.delete("/{repo_id}", status_code=204)

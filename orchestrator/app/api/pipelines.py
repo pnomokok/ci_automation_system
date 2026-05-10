@@ -70,6 +70,17 @@ async def stop_pipeline(
     return {"pipeline_id": pipeline.id, "status": pipeline.status}
 
 
+@router.post("/{pipeline_id}/retrigger", response_model=PipelineCreateResponse, status_code=201)
+async def retrigger_pipeline(
+    pipeline_id: str,
+    session: AsyncSession = Depends(get_db),
+    redis: Redis = Depends(get_redis),
+    current_user: User = Depends(get_current_user),
+):
+    pipeline = await _service.retrigger(session, redis, pipeline_id, user=current_user)
+    return PipelineCreateResponse.model_validate(pipeline)
+
+
 @router.delete("/{pipeline_id}", status_code=204)
 async def delete_pipeline(
     pipeline_id: str,

@@ -189,6 +189,22 @@ class PipelineService:
         await _pipeline_repo.delete(session, pipeline_id)
         await session.commit()
 
+    async def retrigger(
+        self,
+        session: AsyncSession,
+        redis: Redis,
+        pipeline_id: str,
+        user: User | None = None,
+    ) -> Pipeline:
+        source = await self.get(session, pipeline_id, user=user)
+
+        data = PipelineCreate(
+            repo_url=source.repo_url,
+            branch=source.branch,
+            trigger_type=TriggerType.manual,
+        )
+        return await self.create(session, redis, data, user=user)
+
     async def get_logs(
         self,
         session: AsyncSession,

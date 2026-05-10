@@ -1,4 +1,4 @@
-from sqlalchemy import select, delete
+from sqlalchemy import select, delete, update
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.models.repository import Repository
@@ -31,6 +31,13 @@ class RepositoryRepository:
         )
         result = await session.execute(stmt)
         return list(result.scalars().all())
+
+    async def update(self, session: AsyncSession, repo_id: str, data: dict) -> Repository | None:
+        await session.execute(
+            update(Repository).where(Repository.id == repo_id).values(**data)
+        )
+        await session.flush()
+        return await self.get_by_id(session, repo_id)
 
     async def delete(self, session: AsyncSession, repo_id: str) -> bool:
         result = await session.execute(delete(Repository).where(Repository.id == repo_id))

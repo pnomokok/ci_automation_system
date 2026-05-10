@@ -1,6 +1,22 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { formatApiError, getPipelineLogs } from '../../services/api';
 
+async function fetchAllLogs(pipelineId, stepName, streamFilter) {
+  const allLines = [];
+  let page = 1;
+  const pageSize = 500;
+  while (true) {
+    const params = { step_name: stepName, page, page_size: pageSize };
+    if (streamFilter) params.stream = streamFilter;
+    const res = await getPipelineLogs(pipelineId, params);
+    const { items, total } = res.data;
+    allLines.push(...items);
+    if (allLines.length >= total) break;
+    page++;
+  }
+  return allLines;
+}
+
 const STEPS = ['install', 'build', 'test'];
 const PAGE_SIZE = 100;
 
@@ -25,6 +41,7 @@ export default function LogViewer({ pipelineId }) {
   const [error, setError] = useState('');
   const bottomRef = useRef(null);
   const [copied, setCopied] = useState(false);
+  const [exporting, setExporting] = useState(false);
 
   const fetchLogs = useCallback(async () => {
     if (!pipelineId) return;
@@ -61,6 +78,23 @@ export default function LogViewer({ pipelineId }) {
       setCopied(true);
       setTimeout(() => setCopied(false), 2000);
     });
+  };
+
+  const handleExport = async () => {
+    setExporting(true);
+    try {
+      const lines = await fetchAllLogs(pipelineId, activeStep, streamFilter);
+      const text = lines.map((l) => l.content).join('\n');
+      const blob = new Blob([text], { type: 'text/plain;charset=utf-8' });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = `pipeline-${pipelineId.slice(0, 8)}-${activeStep}.txt`;
+      a.click();
+      URL.revokeObjectURL(url);
+    } finally {
+      setExporting(false);
+    }
   };
 
   const totalPages = Math.max(1, Math.ceil(total / PAGE_SIZE));
@@ -119,6 +153,16 @@ export default function LogViewer({ pipelineId }) {
                      bg-dark-800 border border-dark-600 rounded"
         >
           {copied ? '✓ Kopyalandı' : 'Kopyala'}
+        </button>
+
+        {/* Export */}
+        <button
+          onClick={handleExport}
+          disabled={exporting}
+          className="text-xs text-gray-500 hover:text-gray-200 transition-colors px-2 py-1
+                     bg-dark-800 border border-dark-600 rounded disabled:opacity-50"
+        >
+          {exporting ? '…' : '↓ Dışa Aktar'}
         </button>
       </div>
 

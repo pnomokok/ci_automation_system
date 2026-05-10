@@ -11,6 +11,11 @@ class RepositoryCreate(BaseModel):
     webhook_secret: str
 
 
+class RepositoryUpdate(BaseModel):
+    default_branch: str | None = None
+    webhook_secret: str | None = None
+
+
 class RepositoryResponse(BaseModel):
     id: str
     url: str

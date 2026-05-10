@@ -60,6 +60,9 @@ export const triggerPipeline = (repoUrl, branch) => {
 export const stopPipeline = (id) =>
   api.post(`/pipelines/${id}/stop`);
 
+export const retriggerPipeline = (id) =>
+  api.post(`/pipelines/${id}/retrigger`);
+
 export const deletePipeline = (id) =>
   api.delete(`/pipelines/${id}`);
 
@@ -78,6 +81,9 @@ export const createRepository = (data) =>
 
 export const deleteRepository = (id) =>
   api.delete(`/repositories/${id}`);
+
+export const updateRepository = (id, data) =>
+  api.patch(`/repositories/${id}`, data);
 
 // ── Repository Members ───────────────────────────
 export const getRepoMembers = (repoId) =>

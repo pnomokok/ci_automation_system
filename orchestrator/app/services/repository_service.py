@@ -7,7 +7,7 @@ from app.models.repository_member import RepoRole
 from app.repositories.pipeline_repo import PipelineRepository
 from app.repositories.repository_member_repo import RepositoryMemberRepository
 from app.repositories.repository_repo import RepositoryRepository
-from app.schemas.repository import RepositoryCreate
+from app.schemas.repository import RepositoryCreate, RepositoryUpdate
 
 _repo = RepositoryRepository()
 _member_repo = RepositoryMemberRepository()
@@ -80,6 +80,23 @@ class RepositoryService:
         await _member_repo.add(session, repo.id, current_user_id, RepoRole.owner.value)
         await session.commit()
         return repo
+
+    async def update(self, session: AsyncSession, repo_id: str, data: RepositoryUpdate, current_user_id: str):
+        repo = await _repo.get_by_id(session, repo_id)
+        if not repo:
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail={"code": "NOT_FOUND", "message": "Depo bulunamadı"},
+            )
+        if not await _member_repo.is_owner(session, repo_id, current_user_id):
+            raise HTTPException(
+                status_code=status.HTTP_403_FORBIDDEN,
+                detail={"code": "FORBIDDEN", "message": "Bu işlem için owner yetkisi gerekli"},
+            )
+        patch = {k: v for k, v in data.model_dump().items() if v is not None}
+        if not patch:
+            return repo
+        return await _repo.update(session, repo_id, patch)
 
     async def list(self, session: AsyncSession, current_user_id: str):
         return await _repo.list_for_user(session, current_user_id)

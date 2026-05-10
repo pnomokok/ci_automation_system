@@ -1,8 +1,8 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
-import { Link, useParams } from 'react-router-dom';
+import { Link, useNavigate, useParams } from 'react-router-dom';
 import {
   formatApiError, formatDate, formatDuration,
-  getPipeline, getPipelineReport, stopPipeline,
+  getPipeline, getPipelineReport, retriggerPipeline, stopPipeline,
 } from '../../services/api';
 import LogViewer from '../LogViewer';
 import StatusBadge from '../StatusBadge';
@@ -34,6 +34,7 @@ function StepRow({ step }) {
 
 export default function PipelineDetailPage() {
   const { repoId, id } = useParams();
+  const navigate = useNavigate();
   const backTo = repoId ? `/repositories/${repoId}` : '/repositories';
 
   const [pipeline, setPipeline] = useState(null);
@@ -41,6 +42,7 @@ export default function PipelineDetailPage() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
   const [stopping, setStopping] = useState(false);
+  const [retriggering, setRetriggering] = useState(false);
   const pollRef = useRef(null);
 
   const fetchPipeline = useCallback(async () => {
@@ -70,6 +72,24 @@ export default function PipelineDetailPage() {
     }
     return () => { if (pollRef.current) clearInterval(pollRef.current); };
   }, [pipeline?.status, fetchPipeline]);
+
+  const handleRetrigger = async () => {
+    if (!window.confirm('Aynı branch için yeni bir pipeline başlatılsın mı?')) return;
+    setRetriggering(true);
+    try {
+      const res = await retriggerPipeline(id);
+      const newId = res.data.id;
+      if (repoId) {
+        navigate(`/repositories/${repoId}/pipelines/${newId}`);
+      } else {
+        navigate(`/pipelines/${newId}`);
+      }
+    } catch (err) {
+      setError(formatApiError(err));
+    } finally {
+      setRetriggering(false);
+    }
+  };
 
   const handleStop = async () => {
     if (!window.confirm('Pipeline durdurulsun mu?')) return;
@@ -129,6 +149,16 @@ export default function PipelineDetailPage() {
           {pipeline && <StatusBadge status={pipeline.status} />}
         </div>
         <div className="flex-1" />
+        {pipeline && ['SUCCESS', 'FAILED', 'STOPPED'].includes(pipeline.status) && (
+          <button
+            onClick={handleRetrigger}
+            disabled={retriggering}
+            className="bg-blue-800/60 hover:bg-blue-700/80 border border-blue-700 text-blue-200
+                       text-sm px-3 py-1.5 rounded-md disabled:opacity-60 transition-colors"
+          >
+            {retriggering ? 'Tetikleniyor…' : '↺ Yeniden Tetikle'}
+          </button>
+        )}
         {pipeline?.status === 'RUNNING' && (
           <button
             onClick={handleStop}
