@@ -1,5 +1,5 @@
 """StepExecutor davranış testleri — gerçek Docker olmadan mock ile."""
-from unittest.mock import MagicMock, patch
+from unittest.mock import MagicMock, patch, PropertyMock
 
 from app.step_executor import StepExecutor
 
@@ -41,8 +41,30 @@ def test_all_steps_succeed_returns_true():
     steps = ["install", "build", "test"]
     step_ids = {"install": "id-1", "build": "id-2", "test": "id-3"}
 
-    result = executor.execute_steps("pipeline-1", resolver, steps, step_ids, "/workspace")
+    with patch.object(executor, "_has_test_files", return_value=True):
+        result = executor.execute_steps("pipeline-1", resolver, steps, step_ids, "/workspace")
     assert result is True
+
+
+def test_no_test_files_after_install_returns_warning():
+    """Test dosyası yoksa install sonrası kalan adımlar atlanır, WARNING döner."""
+    executor, api_client, container = _make_executor()
+    container.wait.return_value = {"StatusCode": 0}
+
+    resolver = _make_resolver()
+    steps = ["install", "build", "test"]
+    step_ids = {"install": "id-1", "build": "id-2", "test": "id-3"}
+
+    with patch.object(executor, "_has_test_files", return_value=False):
+        result = executor.execute_steps("pipeline-1", resolver, steps, step_ids, "/workspace")
+
+    assert result == "WARNING"
+    # build ve test adımları hiç RUNNING durumuna geçmemeli
+    running_calls = [
+        call for call in api_client.update_step_status.call_args_list
+        if call.args[1] == "RUNNING" and call.args[0] in ("id-2", "id-3")
+    ]
+    assert running_calls == []
 
 
 # ── Adım başarısız ───────────────────────────────────────────────────────────
