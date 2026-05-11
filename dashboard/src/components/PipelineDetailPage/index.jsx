@@ -50,7 +50,7 @@ export default function PipelineDetailPage() {
       const res = await getPipeline(id);
       setPipeline(res.data);
       setError('');
-      if (res.data.status === 'SUCCESS' || res.data.status === 'FAILED') {
+      if (['SUCCESS', 'WARNING', 'FAILED'].includes(res.data.status)) {
         try {
           const rep = await getPipelineReport(id);
           setReport(rep.data);
@@ -149,7 +149,7 @@ export default function PipelineDetailPage() {
           {pipeline && <StatusBadge status={pipeline.status} />}
         </div>
         <div className="flex-1" />
-        {pipeline && ['SUCCESS', 'FAILED', 'STOPPED'].includes(pipeline.status) && (
+        {pipeline && ['SUCCESS', 'WARNING', 'FAILED', 'STOPPED'].includes(pipeline.status) && (
           <button
             onClick={handleRetrigger}
             disabled={retriggering}

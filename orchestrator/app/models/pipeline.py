@@ -17,6 +17,7 @@ class PipelineStatus(str, Enum):
     QUEUED = "QUEUED"
     RUNNING = "RUNNING"
     SUCCESS = "SUCCESS"
+    WARNING = "WARNING"
     FAILED = "FAILED"
     STOPPED = "STOPPED"
 

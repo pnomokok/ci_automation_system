@@ -1,9 +1,10 @@
 const CONFIG = {
-  QUEUED:   { label: 'QUEUED',   cls: 'bg-amber-900/40 text-amber-300 border-amber-700' },
-  RUNNING:  { label: 'RUNNING',  cls: 'bg-blue-900/40  text-blue-300  border-blue-700 animate-pulse-slow' },
-  SUCCESS:  { label: 'SUCCESS',  cls: 'bg-green-900/40 text-green-300 border-green-700' },
-  FAILED:   { label: 'FAILED',   cls: 'bg-red-900/40   text-red-300   border-red-700' },
-  STOPPED:  { label: 'STOPPED',  cls: 'bg-gray-800/60  text-gray-400  border-gray-600' },
+  QUEUED:   { label: 'QUEUED',   cls: 'bg-amber-900/40  text-amber-300  border-amber-700' },
+  RUNNING:  { label: 'RUNNING',  cls: 'bg-blue-900/40   text-blue-300   border-blue-700 animate-pulse-slow' },
+  SUCCESS:  { label: 'SUCCESS',  cls: 'bg-green-900/40  text-green-300  border-green-700' },
+  WARNING:  { label: 'WARNING',  cls: 'bg-yellow-900/40 text-yellow-300 border-yellow-700' },
+  FAILED:   { label: 'FAILED',   cls: 'bg-red-900/40    text-red-300    border-red-700' },
+  STOPPED:  { label: 'STOPPED',  cls: 'bg-gray-800/60   text-gray-400   border-gray-600' },
 };
 
 const STEP_CONFIG = {

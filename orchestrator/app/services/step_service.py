@@ -83,9 +83,20 @@ class StepService:
                 detail={"code": "PIPELINE_NOT_FOUND", "message": "Pipeline bulunamadı"},
             )
 
+        # SUCCESS ama test bulunamadıysa → WARNING
+        if data.status == PipelineStatus.SUCCESS:
+            from app.services.pipeline_service import PipelineService
+            try:
+                report = await PipelineService().get_report(session, pipeline_id)
+                if report.get("no_tests_found"):
+                    data.status = PipelineStatus.WARNING
+            except Exception:
+                pass
+
         now = datetime.now(timezone.utc)
         started_at = now if data.status == PipelineStatus.RUNNING else None
-        finished_at = data.finished_at or (now if data.status in (PipelineStatus.SUCCESS, PipelineStatus.FAILED, PipelineStatus.STOPPED) else None)
+        _final = (PipelineStatus.SUCCESS, PipelineStatus.WARNING, PipelineStatus.FAILED, PipelineStatus.STOPPED)
+        finished_at = data.finished_at or (now if data.status in _final else None)
 
         duration_sec = None
         if finished_at:
